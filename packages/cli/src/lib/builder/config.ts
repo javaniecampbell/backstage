@@ -22,13 +22,13 @@ import commonjs from '@rollup/plugin-commonjs';
 import resolve from '@rollup/plugin-node-resolve';
 import postcss from 'rollup-plugin-postcss';
 import esbuild from 'rollup-plugin-esbuild';
-import imageFiles from 'rollup-plugin-image-files';
 import svgr from '@svgr/rollup';
 import dts from 'rollup-plugin-dts';
 import json from '@rollup/plugin-json';
 import yaml from '@rollup/plugin-yaml';
 import { RollupOptions, OutputOptions } from 'rollup';
 
+import { forwardFileImports } from './plugins';
 import { BuildOptions, Output } from './types';
 import { paths } from '../paths';
 import { svgrTemplate } from '../svgrTemplate';
@@ -37,7 +37,7 @@ export const makeConfigs = async (
   options: BuildOptions,
 ): Promise<RollupOptions[]> => {
   const typesInput = paths.resolveTargetRoot(
-    'dist',
+    'dist-types',
     relativePath(paths.targetRoot, paths.targetDir),
     'src/index.d.ts',
   );
@@ -64,6 +64,7 @@ export const makeConfigs = async (
         entryFileNames: 'index.cjs.js',
         chunkFileNames: 'cjs/[name]-[hash].js',
         format: 'commonjs',
+        sourcemap: true,
       });
     }
     if (options.outputs.has(Output.esm)) {
@@ -72,6 +73,7 @@ export const makeConfigs = async (
         entryFileNames: 'index.esm.js',
         chunkFileNames: 'esm/[name]-[hash].js',
         format: 'module',
+        sourcemap: true,
       });
       // Assume we're building for the browser if ESM output is included
       mainFields.unshift('browser');
@@ -88,15 +90,18 @@ export const makeConfigs = async (
         }),
         resolve({ mainFields }),
         commonjs({
-          include: ['node_modules/**', '../../node_modules/**'],
-          exclude: ['**/*.stories.*', '**/*.test.*'],
+          include: /node_modules/,
+          exclude: [/\/[^/]+\.(?:stories|test)\.[^/]+$/],
         }),
         postcss(),
-        imageFiles({ exclude: '**/*.icon.svg' }),
+        forwardFileImports({
+          exclude: /\.icon\.svg$/,
+          include: [/\.svg$/, /\.png$/, /\.gif$/, /\.jpg$/, /\.jpeg$/],
+        }),
         json(),
         yaml(),
         svgr({
-          include: '**/*.icon.svg',
+          include: /\.icon\.svg$/,
           template: svgrTemplate,
         }),
         esbuild({

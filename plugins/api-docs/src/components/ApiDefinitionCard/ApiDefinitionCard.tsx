@@ -14,21 +14,55 @@
  * limitations under the License.
  */
 
-import { ApiEntityV1alpha1 } from '@backstage/catalog-model';
-import { InfoCard } from '@backstage/core';
-import React, { FC } from 'react';
-import { ApiDefinitionWidget } from '../ApiDefinitionWidget/ApiDefinitionWidget';
+import { ApiEntity } from '@backstage/catalog-model';
+import { CardTab, TabbedCard, useApi } from '@backstage/core';
+import { Alert } from '@material-ui/lab';
+import React from 'react';
+import { apiDocsConfigRef } from '../../config';
+import { PlainApiDefinitionWidget } from '../PlainApiDefinitionWidget';
 
-export const ApiDefinitionCard: FC<{
-  title?: string;
-  apiEntity: ApiEntityV1alpha1;
-}> = ({ title, apiEntity }) => {
-  const type = apiEntity?.spec?.type || '';
-  const definition = apiEntity?.spec?.definition || '';
+type Props = {
+  apiEntity?: ApiEntity;
+};
+
+export const ApiDefinitionCard = ({ apiEntity }: Props) => {
+  const config = useApi(apiDocsConfigRef);
+  const { getApiDefinitionWidget } = config;
+
+  if (!apiEntity) {
+    return <Alert severity="error">Could not fetch the API</Alert>;
+  }
+
+  const definitionWidget = getApiDefinitionWidget(apiEntity);
+
+  if (definitionWidget) {
+    return (
+      <TabbedCard title={apiEntity.metadata.name}>
+        <CardTab label={definitionWidget.title} key="widget">
+          {definitionWidget.component(apiEntity.spec.definition)}
+        </CardTab>
+        <CardTab label="Raw" key="raw">
+          <PlainApiDefinitionWidget
+            definition={apiEntity.spec.definition}
+            language={definitionWidget.rawLanguage || apiEntity.spec.type}
+          />
+        </CardTab>
+      </TabbedCard>
+    );
+  }
 
   return (
-    <InfoCard title={title} subheader={type}>
-      <ApiDefinitionWidget type={type} definition={definition} />
-    </InfoCard>
+    <TabbedCard
+      title={apiEntity.metadata.name}
+      children={[
+        // Has to be an array, otherwise typescript doesn't like that this has only a single child
+        <CardTab label={apiEntity.spec.type} key="raw">
+          <PlainApiDefinitionWidget
+            definition={apiEntity.spec.definition}
+            language={apiEntity.spec.type}
+          />
+        </CardTab>,
+      ]}
+    />
   );
 };

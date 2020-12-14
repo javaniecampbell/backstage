@@ -15,11 +15,11 @@
  */
 
 import {
+  configApiRef,
   Header,
   HomepageTimer,
   identityApiRef,
   Page,
-  pageTheme,
   useApi,
 } from '@backstage/core';
 import React from 'react';
@@ -31,13 +31,15 @@ type Props = {
 
 const CatalogLayout = ({ children }: Props) => {
   const greeting = getTimeBasedGreeting();
+  const profile = useApi(identityApiRef).getProfile();
   const userId = useApi(identityApiRef).getUserId();
+  const orgName = useApi(configApiRef).getOptionalString('organization.name');
 
   return (
-    <Page theme={pageTheme.home}>
+    <Page themeId="home">
       <Header
-        title={`${greeting.greeting}, ${userId}!`}
-        subtitle="Backstage Service Catalog"
+        title={`${greeting.greeting}, ${profile.displayName || userId}!`}
+        subtitle={`${orgName || 'Backstage'} Service Catalog`}
         tooltip={greeting.language}
         pageTitleOverride="Home"
       >

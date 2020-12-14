@@ -14,20 +14,20 @@
  * limitations under the License.
  */
 
-import React, { FC, useState } from 'react';
+import React, { useState } from 'react';
 import { Grid, makeStyles } from '@material-ui/core';
 import {
   InfoCard,
   Page,
-  pageTheme,
   Content,
   useApi,
   errorApiRef,
   Header,
   SupportButton,
   ContentHeader,
+  RouteRef,
 } from '@backstage/core';
-import RegisterComponentForm from '../RegisterComponentForm';
+import { RegisterComponentForm } from '../RegisterComponentForm';
 import { catalogApiRef } from '@backstage/plugin-catalog';
 import { useMountedState } from 'react-use';
 import { Entity, Location } from '@backstage/catalog-model';
@@ -54,7 +54,12 @@ const FormStates = {
 } as const;
 
 type ValuesOf<T> = T extends Record<any, infer V> ? V : never;
-const RegisterComponentPage: FC<{}> = () => {
+
+export const RegisterComponentPage = ({
+  catalogRouteRef,
+}: {
+  catalogRouteRef: RouteRef;
+}) => {
   const classes = useStyles();
   const catalogApi = useApi(catalogApiRef);
   const [formState, setFormState] = useState<ValuesOf<typeof FormStates>>(
@@ -70,33 +75,36 @@ const RegisterComponentPage: FC<{}> = () => {
       location: Location;
     } | null;
     error: null | Error;
+    dryRun: boolean;
   }>({
     data: null,
     error: null,
+    dryRun: false,
   });
 
   const handleSubmit = async (formData: Record<string, string>) => {
     setFormState(FormStates.Submitting);
-    const { componentLocation: target } = formData;
+    const { entityLocation: target, mode } = formData;
+    const dryRun = mode === 'validate';
     try {
-      const data = await catalogApi.addLocation('github', target);
+      const data = await catalogApi.addLocation({ target, dryRun });
 
       if (!isMounted()) return;
 
-      setResult({ error: null, data });
+      setResult({ error: null, data, dryRun });
       setFormState(FormStates.Success);
     } catch (e) {
       errorApi.post(e);
 
       if (!isMounted()) return;
 
-      setResult({ error: e, data: null });
+      setResult({ error: e, data: null, dryRun });
       setFormState(FormStates.Idle);
     }
   };
 
   return (
-    <Page theme={pageTheme.home}>
+    <Page themeId="home">
       <Header title="Register existing component" />
       <Content>
         <ContentHeader title="Start tracking your component in Backstage">
@@ -119,12 +127,12 @@ const RegisterComponentPage: FC<{}> = () => {
       {formState === FormStates.Success && (
         <RegisterComponentResultDialog
           entities={result.data!.entities}
+          dryRun={result.dryRun}
           onClose={() => setFormState(FormStates.Idle)}
           classes={{ paper: classes.dialogPaper }}
+          catalogRouteRef={catalogRouteRef}
         />
       )}
     </Page>
   );
 };
-
-export default RegisterComponentPage;

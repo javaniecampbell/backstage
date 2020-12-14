@@ -5,6 +5,7 @@ import { PluginEnvironment } from '../types';
 export default async function createPlugin({
   logger,
   config,
+  discovery,
 }: PluginEnvironment) {
-  return await createRouter({ logger, config });
+  return await createRouter({ logger, config, discovery });
 }

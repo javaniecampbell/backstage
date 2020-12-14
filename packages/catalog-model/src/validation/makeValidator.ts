@@ -23,11 +23,11 @@ const defaultValidators: Validators = {
   isValidKind: KubernetesValidatorFunctions.isValidKind,
   isValidEntityName: KubernetesValidatorFunctions.isValidObjectName,
   isValidNamespace: KubernetesValidatorFunctions.isValidNamespace,
-  normalizeEntityName: CommonValidatorFunctions.normalizeToLowercaseAlphanum,
   isValidLabelKey: KubernetesValidatorFunctions.isValidLabelKey,
   isValidLabelValue: KubernetesValidatorFunctions.isValidLabelValue,
   isValidAnnotationKey: KubernetesValidatorFunctions.isValidAnnotationKey,
   isValidAnnotationValue: KubernetesValidatorFunctions.isValidAnnotationValue,
+  isValidTag: CommonValidatorFunctions.isValidDnsLabel,
 };
 
 export function makeValidator(overrides: Partial<Validators> = {}): Validators {

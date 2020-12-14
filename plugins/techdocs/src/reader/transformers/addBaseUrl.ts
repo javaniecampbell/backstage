@@ -13,19 +13,19 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
-import URLFormatter from '../urlFormatter';
+import { EntityName } from '@backstage/catalog-model';
 import type { Transformer } from './index';
+import { TechDocsStorage } from '../../api';
 
 type AddBaseUrlOptions = {
-  docStorageUrl: string;
-  componentId: string;
+  techdocsStorageApi: TechDocsStorage;
+  entityId: EntityName;
   path: string;
 };
 
 export const addBaseUrl = ({
-  docStorageUrl,
-  componentId,
+  techdocsStorageApi,
+  entityId,
   path,
 }: AddBaseUrlOptions): Transformer => {
   return dom => {
@@ -36,15 +36,11 @@ export const addBaseUrl = ({
       Array.from(list)
         .filter(elem => !!elem.getAttribute(attributeName))
         .forEach((elem: T) => {
-          const urlFormatter = new URLFormatter(
-            path.length < 1 || path.endsWith('/')
-              ? `${docStorageUrl}/${componentId}/${path}`
-              : `${docStorageUrl}/${componentId}/${path}/`,
-          );
-
+          const elemAttribute = elem.getAttribute(attributeName);
+          if (!elemAttribute) return;
           elem.setAttribute(
             attributeName,
-            urlFormatter.formatURL(elem.getAttribute(attributeName)!),
+            techdocsStorageApi.getBaseUrl(elemAttribute, entityId, path),
           );
         });
     };

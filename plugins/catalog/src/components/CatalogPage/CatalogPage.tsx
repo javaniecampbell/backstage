@@ -15,26 +15,30 @@
  */
 
 import {
+  configApiRef,
   Content,
   ContentHeader,
-  identityApiRef,
+  errorApiRef,
   SupportButton,
-  configApiRef,
   useApi,
 } from '@backstage/core';
 import { rootRoute as scaffolderRootRoute } from '@backstage/plugin-scaffolder';
 import { Button, makeStyles } from '@material-ui/core';
 import SettingsIcon from '@material-ui/icons/Settings';
 import StarIcon from '@material-ui/icons/Star';
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { Link as RouterLink } from 'react-router-dom';
 import { EntityFilterGroupsProvider, useFilteredEntities } from '../../filter';
-import { useStarredEntities } from '../../hooks/useStarredEntites';
-import { CatalogFilter, ButtonGroup } from '../CatalogFilter/CatalogFilter';
+import { useStarredEntities } from '../../hooks/useStarredEntities';
+import { catalogApiRef } from '../../plugin';
+import { ButtonGroup, CatalogFilter } from '../CatalogFilter/CatalogFilter';
 import { CatalogTable } from '../CatalogTable/CatalogTable';
+import { ResultsFilter } from '../ResultsFilter/ResultsFilter';
 import CatalogLayout from './CatalogLayout';
 import { CatalogTabs, LabeledComponentType } from './CatalogTabs';
 import { WelcomeBanner } from './WelcomeBanner';
+import { useOwnUser } from '../useOwnUser';
+import { isOwnerOf } from '../isOwnerOf';
 
 const useStyles = makeStyles(theme => ({
   contentWrapper: {
@@ -43,17 +47,44 @@ const useStyles = makeStyles(theme => ({
     gridTemplateColumns: '250px 1fr',
     gridColumnGap: theme.spacing(2),
   },
+  buttonSpacing: {
+    marginLeft: theme.spacing(2),
+  },
 }));
 
 const CatalogPageContents = () => {
   const styles = useStyles();
-  const { loading, error, matchingEntities } = useFilteredEntities();
+  const {
+    loading,
+    error,
+    reload,
+    matchingEntities,
+    availableTags,
+    isCatalogEmpty,
+  } = useFilteredEntities();
+  const configApi = useApi(configApiRef);
+  const catalogApi = useApi(catalogApiRef);
+  const errorApi = useApi(errorApiRef);
   const { isStarredEntity } = useStarredEntities();
-  const userId = useApi(identityApiRef).getUserId();
   const [selectedTab, setSelectedTab] = useState<string>();
   const [selectedSidebarItem, setSelectedSidebarItem] = useState<string>();
-  const orgName =
-    useApi(configApiRef).getOptionalString('organization.name') ?? 'Company';
+  const orgName = configApi.getOptionalString('organization.name') ?? 'Company';
+
+  const addMockData = useCallback(async () => {
+    try {
+      const promises: Promise<unknown>[] = [];
+      const root = configApi.getConfig('catalog.exampleEntityLocations');
+      for (const type of root.keys()) {
+        for (const target of root.getStringArray(type)) {
+          promises.push(catalogApi.addLocation({ target }));
+        }
+      }
+      await Promise.all(promises);
+      await reload();
+    } catch (err) {
+      errorApi.post(err);
+    }
+  }, [catalogApi, configApi, errorApi, reload]);
 
   const tabs = useMemo<LabeledComponentType[]>(
     () => [
@@ -81,6 +112,8 @@ const CatalogPageContents = () => {
     [],
   );
 
+  const { value: user } = useOwnUser();
+
   const filterGroups = useMemo<ButtonGroup[]>(
     () => [
       {
@@ -90,7 +123,7 @@ const CatalogPageContents = () => {
             id: 'owned',
             label: 'Owned',
             icon: SettingsIcon,
-            filterFn: entity => entity.spec?.owner === userId,
+            filterFn: entity => user !== undefined && isOwnerOf(user, entity),
           },
           {
             id: 'starred',
@@ -111,8 +144,11 @@ const CatalogPageContents = () => {
         ],
       },
     ],
-    [isStarredEntity, userId, orgName],
+    [isStarredEntity, orgName, user],
   );
+
+  const showAddExampleEntities =
+    configApi.has('catalog.exampleEntityLocations') && isCatalogEmpty;
 
   return (
     <CatalogLayout>
@@ -131,6 +167,16 @@ const CatalogPageContents = () => {
           >
             Create Component
           </Button>
+          {showAddExampleEntities && (
+            <Button
+              className={styles.buttonSpacing}
+              variant="outlined"
+              color="primary"
+              onClick={addMockData}
+            >
+              Add example components
+            </Button>
+          )}
           <SupportButton>All your software catalog entities</SupportButton>
         </ContentHeader>
         <div className={styles.contentWrapper}>
@@ -140,6 +186,7 @@ const CatalogPageContents = () => {
               onChange={({ label }) => setSelectedSidebarItem(label)}
               initiallySelected="owned"
             />
+            <ResultsFilter availableTags={availableTags} />
           </div>
           <CatalogTable
             titlePreamble={selectedSidebarItem ?? ''}

@@ -19,7 +19,7 @@ import { TextField } from '@material-ui/core';
 import { SimpleStepper, SimpleStepperStep } from '.';
 
 export default {
-  title: 'SimpleStepper',
+  title: 'Navigation/SimpleStepper',
   component: SimpleStepper,
 };
 
@@ -51,7 +51,7 @@ export const ConditionalButtons = () => {
         <TextField
           variant="outlined"
           placeholder="Required*"
-          onChange={(e) => setRequired(!!e.target.value)}
+          onChange={e => setRequired(!!e.target.value)}
         />
       </SimpleStepperStep>
       <SimpleStepperStep title="Step 2">

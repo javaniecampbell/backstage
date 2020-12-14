@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-import { createApiRef } from '@backstage/core';
 import { MovedState } from './utils/types';
 
 /**
@@ -35,11 +34,17 @@ export interface RadarQuadrant {
 export interface RadarEntry {
   key: string; // react key
   id: string;
-  moved: MovedState;
-  quadrant: RadarQuadrant;
-  ring: RadarRing;
+  quadrant: string;
   title: string;
   url: string;
+  timeline: Array<RadarEntrySnapshot>;
+}
+
+export interface RadarEntrySnapshot {
+  date: Date;
+  ringId: string;
+  description?: string;
+  moved?: MovedState;
 }
 
 /**
@@ -71,38 +76,4 @@ export interface TechRadarApi extends TechRadarComponentProps {
   title?: string;
   subtitle?: string;
   pageTitle?: string;
-}
-
-export const techRadarApiRef = createApiRef<TechRadarApi>({
-  id: 'plugin.techradar',
-  description: 'Used by the Tech Radar to render the visualization',
-});
-
-export class TechRadar implements TechRadarApi {
-  // Default columns
-  public width: TechRadarApi['width'];
-  public height: TechRadarApi['height'];
-  public getData: TechRadarApi['getData'];
-  public svgProps: TechRadarApi['svgProps'];
-  public title: TechRadarApi['title'];
-  public subtitle: TechRadarApi['subtitle'];
-  public pageTitle: TechRadarApi['pageTitle'];
-
-  constructor(overrideOptions: TechRadarApi) {
-    const defaultOptions: Partial<TechRadarApi> = {
-      title: 'Tech Radar',
-      subtitle: 'Pick the recommended technologies for your projects',
-      pageTitle: 'Company Radar',
-    };
-
-    const options = { ...defaultOptions, ...overrideOptions };
-
-    this.width = options.width;
-    this.height = options.height;
-    this.getData = options.getData;
-    this.svgProps = options.svgProps;
-    this.title = options.title;
-    this.subtitle = options.subtitle;
-    this.pageTitle = options.pageTitle;
-  }
 }

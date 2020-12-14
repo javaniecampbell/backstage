@@ -14,14 +14,13 @@
  * limitations under the License.
  */
 
-import React, { FC } from 'react';
+import React from 'react';
 import { makeStyles, Typography } from '@material-ui/core';
 import {
   Content,
   ContentHeader,
   Header,
   Page,
-  pageTheme,
   SupportButton,
 } from '@backstage/core';
 import ExploreCard, { CardData } from './ExploreCard';
@@ -80,6 +79,13 @@ const toolsCards = [
     tags: ['standards', 'landscape'],
   },
   {
+    title: 'Cost Insights',
+    description: 'Insights into cloud costs for your organization.',
+    url: '/cost-insights',
+    image: 'https://cloud.google.com/images/press/logo-cloud.png',
+    tags: ['cloud', 'finops'],
+  },
+  {
     title: 'GraphiQL',
     description:
       'Integrates GraphiQL as a tool to browse GraphiQL endpoints inside Backstage.',
@@ -107,10 +113,11 @@ const toolsCards = [
   },
 ];
 
-const ExplorePluginPage: FC<{}> = () => {
+export const ExplorePluginPage = () => {
   const classes = useStyles();
+
   return (
-    <Page theme={pageTheme.home}>
+    <Page themeId="home">
       <Header
         title="Explore"
         subtitle="Tools and services available in Backstage"
@@ -130,5 +137,3 @@ const ExplorePluginPage: FC<{}> = () => {
     </Page>
   );
 };
-
-export default ExplorePluginPage;

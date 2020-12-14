@@ -14,60 +14,90 @@
  * limitations under the License.
  */
 
-import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import {
+  Content,
+  Header,
+  ItemCard,
+  Page,
+  Progress,
+  useApi,
+} from '@backstage/core';
+import { catalogApiRef } from '@backstage/plugin-catalog';
 import { Grid } from '@material-ui/core';
-import { ItemCard } from '@backstage/core';
-import { TechDocsPageWrapper } from './TechDocsPageWrapper';
+import React from 'react';
+import { generatePath, useNavigate } from 'react-router-dom';
+import { useAsync } from 'react-use';
+import { rootDocsRouteRef } from '../../plugin';
 
-type DocumentationSite = {
-  title: string;
-  description: string;
-  tags: Array<string>;
-  path: string;
-  btnLabel: string;
-};
-
-const documentationSites: Array<DocumentationSite> = [
-  {
-    title: 'MkDocs',
-    description:
-      "MkDocs is a fast, simple and downright gorgeous static site generator that's geared towards building project documentation. ",
-    tags: ['Developer Tool'],
-    path: '/docs/mkdocs',
-    btnLabel: 'Read Docs',
-  },
-  {
-    title: 'Backstage Docs',
-    description: 'Main documentation for Backstage features and platform APIs.',
-    tags: ['Service'],
-    path: '/docs/backstage',
-    btnLabel: 'Read Docs',
-  },
-];
 export const TechDocsHome = () => {
+  const catalogApi = useApi(catalogApiRef);
   const navigate = useNavigate();
 
+  const { value, loading, error } = useAsync(async () => {
+    const response = await catalogApi.getEntities();
+    return response.items.filter(entity => {
+      return !!entity.metadata.annotations?.['backstage.io/techdocs-ref'];
+    });
+  });
+
+  if (loading) {
+    return (
+      <Page themeId="documentation">
+        <Header
+          title="Documentation"
+          subtitle="Documentation available in Backstage"
+        />
+        <Content>
+          <Progress />
+        </Content>
+      </Page>
+    );
+  }
+
+  if (error) {
+    return (
+      <Page themeId="documentation">
+        <Header
+          title="Documentation"
+          subtitle="Documentation available in Backstage"
+        />
+        <Content>
+          <p>{error.message}</p>
+        </Content>
+      </Page>
+    );
+  }
+
   return (
-    <>
-      <TechDocsPageWrapper
+    <Page themeId="documentation">
+      <Header
         title="Documentation"
         subtitle="Documentation available in Backstage"
-      >
+      />
+      <Content>
         <Grid container data-testid="docs-explore">
-          {documentationSites.map((site: DocumentationSite, index: number) => (
-            <Grid key={index} item xs={12} sm={6} md={3}>
-              <ItemCard
-                onClick={() => navigate(site.path)}
-                tags={site.tags}
-                title={site.title}
-                label={site.btnLabel}
-                description={site.description}
-              />
-            </Grid>
-          ))}
+          {value?.length
+            ? value.map((entity, index: number) => (
+                <Grid key={index} item xs={12} sm={6} md={3}>
+                  <ItemCard
+                    onClick={() =>
+                      navigate(
+                        generatePath(rootDocsRouteRef.path, {
+                          namespace: entity.metadata.namespace ?? 'default',
+                          kind: entity.kind,
+                          name: entity.metadata.name,
+                        }),
+                      )
+                    }
+                    title={entity.metadata.name}
+                    label="Read Docs"
+                    description={entity.metadata.description}
+                  />
+                </Grid>
+              ))
+            : null}
         </Grid>
-      </TechDocsPageWrapper>
-    </>
+      </Content>
+    </Page>
   );
 };

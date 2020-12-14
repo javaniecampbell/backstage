@@ -15,13 +15,13 @@
  */
 
 import { ApiProvider, ApiRegistry, storageApiRef } from '@backstage/core';
+import { MockStorageApi } from '@backstage/test-utils';
 import { act, renderHook } from '@testing-library/react-hooks';
 import React from 'react';
-import { catalogApiRef } from '../api/types';
+import { catalogApiRef } from '../plugin';
 import { EntityFilterGroupsProvider } from './EntityFilterGroupsProvider';
-import { FilterGroupStatesReady, FilterGroup } from './types';
+import { FilterGroup, FilterGroupStatesReady } from './types';
 import { useEntityFilterGroup } from './useEntityFilterGroup';
-import { MockStorageApi } from '@backstage/test-utils';
 
 describe('useEntityFilterGroup', () => {
   let catalogApi: jest.Mocked<typeof catalogApiRef.T>;
@@ -30,7 +30,7 @@ describe('useEntityFilterGroup', () => {
   beforeEach(() => {
     catalogApi = {
       /* eslint-disable-next-line @typescript-eslint/no-unused-vars */
-      addLocation: jest.fn((_a, _b) => new Promise(() => {})),
+      addLocation: jest.fn(_a => new Promise(() => {})),
       getEntities: jest.fn(),
       getLocationByEntity: jest.fn(),
       getLocationById: jest.fn(),
@@ -49,36 +49,38 @@ describe('useEntityFilterGroup', () => {
   });
 
   it('works for an empty set of filters', async () => {
-    catalogApi.getEntities.mockResolvedValue([]);
+    catalogApi.getEntities.mockResolvedValue({ items: [] });
     const group: FilterGroup = { filters: {} };
-    const { result, wait } = renderHook(
+    const { result, waitFor } = renderHook(
       () => useEntityFilterGroup('g1', group),
       { wrapper },
     );
 
-    await wait(() => expect(result.current.state.type).toBe('ready'));
+    await waitFor(() => expect(result.current.state.type).toBe('ready'));
   });
 
   it('works for a single group', async () => {
-    catalogApi.getEntities.mockResolvedValue([
-      {
-        apiVersion: 'backstage.io/v1alpha1',
-        kind: 'Component',
-        metadata: { name: 'n' },
-      },
-    ]);
+    catalogApi.getEntities.mockResolvedValue({
+      items: [
+        {
+          apiVersion: 'backstage.io/v1alpha1',
+          kind: 'Component',
+          metadata: { name: 'n' },
+        },
+      ],
+    });
     const group: FilterGroup = {
       filters: {
         f1: e => e.metadata.name === 'n',
         f2: e => e.metadata.name !== 'n',
       },
     };
-    const { result, wait } = renderHook(
+    const { result, waitFor } = renderHook(
       () => useEntityFilterGroup('g1', group),
       { wrapper },
     );
 
-    await wait(() => expect(result.current.state.type).toEqual('ready'));
+    await waitFor(() => expect(result.current.state.type).toEqual('ready'));
     let state = result.current.state as FilterGroupStatesReady;
     expect(state.state.filters.f1).toEqual({
       isSelected: false,
@@ -91,7 +93,7 @@ describe('useEntityFilterGroup', () => {
 
     act(() => result.current.setSelectedFilters(['f1']));
 
-    await wait(() => expect(result.current.state.type).toEqual('ready'));
+    await waitFor(() => expect(result.current.state.type).toEqual('ready'));
     state = result.current.state as FilterGroupStatesReady;
     expect(state.state.filters.f1).toEqual({
       isSelected: true,
@@ -104,7 +106,7 @@ describe('useEntityFilterGroup', () => {
 
     act(() => result.current.setSelectedFilters(['f2']));
 
-    await wait(() => expect(result.current.state.type).toEqual('ready'));
+    await waitFor(() => expect(result.current.state.type).toEqual('ready'));
     state = result.current.state as FilterGroupStatesReady;
     expect(state.state.filters.f1).toEqual({
       isSelected: false,

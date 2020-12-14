@@ -14,6 +14,11 @@
  * limitations under the License.
  */
 
-export * from './types';
+export type {
+  RouteRef,
+  RouteRefConfig,
+  AbsoluteRouteRef,
+  ConcreteRoute,
+  MutableRouteRef,
+} from './types';
 export { createRouteRef } from './RouteRef';
-export type { MutableRouteRef } from './RouteRef';

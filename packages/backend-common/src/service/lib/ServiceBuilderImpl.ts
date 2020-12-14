@@ -14,12 +14,12 @@
  * limitations under the License.
  */
 
-import { ConfigReader } from '@backstage/config';
+import { Config } from '@backstage/config';
 import compression from 'compression';
 import cors from 'cors';
 import express, { Router } from 'express';
-import helmet from 'helmet';
-import { Server } from 'http';
+import helmet, { HelmetOptions } from 'helmet';
+import * as http from 'http';
 import stoppable from 'stoppable';
 import { Logger } from 'winston';
 import { useHotCleanup } from '../../hot';
@@ -30,17 +30,41 @@ import {
   requestLoggingHandler,
 } from '../../middleware';
 import { ServiceBuilder } from '../types';
-import { readBaseOptions, readCorsOptions } from './config';
+import {
+  CspOptions,
+  HttpsSettings,
+  readBaseOptions,
+  readCorsOptions,
+  readCspOptions,
+  readHttpsSettings,
+} from './config';
+import { createHttpServer, createHttpsServer } from './hostFactory';
 
-const DEFAULT_PORT = 7000;
+export const DEFAULT_PORT = 7000;
 // '' is express default, which listens to all interfaces
 const DEFAULT_HOST = '';
+// taken from the helmet source code - don't seem to be exported
+const DEFAULT_CSP = {
+  'default-src': ["'self'"],
+  'base-uri': ["'self'"],
+  'block-all-mixed-content': [],
+  'font-src': ["'self'", 'https:', 'data:'],
+  'frame-ancestors': ["'self'"],
+  'img-src': ["'self'", 'data:'],
+  'object-src': ["'none'"],
+  'script-src': ["'self'"],
+  'script-src-attr': ["'none'"],
+  'style-src': ["'self'", 'https:', "'unsafe-inline'"],
+  'upgrade-insecure-requests': [] as string[],
+};
 
 export class ServiceBuilderImpl implements ServiceBuilder {
   private port: number | undefined;
   private host: string | undefined;
   private logger: Logger | undefined;
   private corsOptions: cors.CorsOptions | undefined;
+  private cspOptions: Record<string, string[] | false> | undefined;
+  private httpsSettings: HttpsSettings | undefined;
   private routers: [string, Router][];
   // Reference to the module where builder is created - needed for hot module
   // reloading
@@ -51,7 +75,7 @@ export class ServiceBuilderImpl implements ServiceBuilder {
     this.module = moduleRef;
   }
 
-  loadConfig(config: ConfigReader): ServiceBuilder {
+  loadConfig(config: Config): ServiceBuilder {
     const backendConfig = config.getOptionalConfig('backend');
     if (!backendConfig) {
       return this;
@@ -59,7 +83,10 @@ export class ServiceBuilderImpl implements ServiceBuilder {
 
     const baseOptions = readBaseOptions(backendConfig);
     if (baseOptions.listenPort) {
-      this.port = baseOptions.listenPort;
+      this.port =
+        typeof baseOptions.listenPort === 'string'
+          ? parseInt(baseOptions.listenPort, 10)
+          : baseOptions.listenPort;
     }
     if (baseOptions.listenHost) {
       this.host = baseOptions.listenHost;
@@ -68,6 +95,16 @@ export class ServiceBuilderImpl implements ServiceBuilder {
     const corsOptions = readCorsOptions(backendConfig);
     if (corsOptions) {
       this.corsOptions = corsOptions;
+    }
+
+    const cspOptions = readCspOptions(backendConfig);
+    if (cspOptions) {
+      this.cspOptions = cspOptions;
+    }
+
+    const httpsSettings = readHttpsSettings(backendConfig);
+    if (httpsSettings) {
+      this.httpsSettings = httpsSettings;
     }
 
     return this;
@@ -88,8 +125,18 @@ export class ServiceBuilderImpl implements ServiceBuilder {
     return this;
   }
 
+  setHttpsSettings(settings: HttpsSettings): ServiceBuilder {
+    this.httpsSettings = settings;
+    return this;
+  }
+
   enableCors(options: cors.CorsOptions): ServiceBuilder {
     this.corsOptions = options;
+    return this;
+  }
+
+  setCsp(options: CspOptions): ServiceBuilder {
+    this.cspOptions = options;
     return this;
   }
 
@@ -98,16 +145,22 @@ export class ServiceBuilderImpl implements ServiceBuilder {
     return this;
   }
 
-  start(): Promise<Server> {
+  start(): Promise<http.Server> {
     const app = express();
-    const { port, host, logger, corsOptions } = this.getOptions();
+    const {
+      port,
+      host,
+      logger,
+      corsOptions,
+      httpsSettings,
+      helmetOptions,
+    } = this.getOptions();
 
-    app.use(helmet());
+    app.use(helmet(helmetOptions));
     if (corsOptions) {
       app.use(cors(corsOptions));
     }
     app.use(compression());
-    app.use(express.json());
     app.use(requestLoggingHandler());
     for (const [root, route] of this.routers) {
       app.use(root, route);
@@ -121,20 +174,24 @@ export class ServiceBuilderImpl implements ServiceBuilder {
         reject(e);
       });
 
-      const server = stoppable(
-        app.listen(port, host, () => {
+      const server: http.Server = httpsSettings
+        ? createHttpsServer(app, httpsSettings, logger)
+        : createHttpServer(app, logger);
+
+      const stoppableServer = stoppable(
+        server.listen(port, host, () => {
           logger.info(`Listening on ${host}:${port}`);
         }),
         0,
       );
 
       useHotCleanup(this.module, () =>
-        server.stop((e: any) => {
+        stoppableServer.stop((e: any) => {
           if (e) console.error(e);
         }),
       );
 
-      resolve(server);
+      resolve(stoppableServer);
     });
   }
 
@@ -143,12 +200,38 @@ export class ServiceBuilderImpl implements ServiceBuilder {
     host: string;
     logger: Logger;
     corsOptions?: cors.CorsOptions;
+    httpsSettings?: HttpsSettings;
+    helmetOptions: HelmetOptions;
   } {
     return {
       port: this.port ?? DEFAULT_PORT,
       host: this.host ?? DEFAULT_HOST,
       logger: this.logger ?? getRootLogger(),
       corsOptions: this.corsOptions,
+      httpsSettings: this.httpsSettings,
+      helmetOptions: {
+        contentSecurityPolicy: {
+          directives: applyCspDirectives(this.cspOptions),
+        },
+      },
     };
   }
+}
+
+export function applyCspDirectives(
+  directives: Record<string, string[] | false> | undefined,
+): CspOptions | undefined {
+  const result: CspOptions = { ...DEFAULT_CSP };
+
+  if (directives) {
+    for (const [key, value] of Object.entries(directives)) {
+      if (value === false) {
+        delete result[key];
+      } else {
+        result[key] = value;
+      }
+    }
+  }
+
+  return result;
 }

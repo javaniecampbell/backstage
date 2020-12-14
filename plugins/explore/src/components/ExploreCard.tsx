@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import React, { FC } from 'react';
+import React from 'react';
 import classNames from 'classnames';
 import {
   Button,
@@ -28,7 +28,7 @@ import {
 } from '@material-ui/core';
 import { BackstageTheme } from '@backstage/theme';
 
-const useStyles = makeStyles<BackstageTheme>((theme) => ({
+const useStyles = makeStyles<BackstageTheme>(theme => ({
   card: {
     display: 'flex',
     flexDirection: 'column',
@@ -80,7 +80,7 @@ type Props = {
   objectFit?: 'cover' | 'contain';
 };
 
-const ExploreCard: FC<Props> = ({ card, objectFit }) => {
+const ExploreCard = ({ card, objectFit }: Props) => {
   const classes = useStyles();
 
   const { title, description, url, image, lifecycle, newsTag, tags } = card;

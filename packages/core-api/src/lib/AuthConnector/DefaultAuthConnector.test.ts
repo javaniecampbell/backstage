@@ -18,11 +18,13 @@ import ProviderIcon from '@material-ui/icons/AcUnit';
 import { DefaultAuthConnector } from './DefaultAuthConnector';
 import MockOAuthApi from '../../apis/implementations/OAuthRequestApi/MockOAuthApi';
 import * as loginPopup from '../loginPopup';
-
-const anyFetch = fetch as any;
+import { UrlPatternDiscovery } from '../../apis';
+import { msw } from '@backstage/test-utils';
+import { setupServer } from 'msw/node';
+import { rest } from 'msw';
 
 const defaultOptions = {
-  apiOrigin: 'my-origin',
+  discoveryApi: UrlPatternDiscovery.compile('http://my-host/api/{{pluginId}}'),
   environment: 'production',
   provider: {
     id: 'my-provider',
@@ -38,19 +40,25 @@ const defaultOptions = {
 };
 
 describe('DefaultAuthConnector', () => {
+  const server = setupServer();
+  msw.setupDefaultHandlers(server);
+
   afterEach(() => {
     jest.resetAllMocks();
-    anyFetch.resetMocks();
   });
 
   it('should refresh a session', async () => {
-    anyFetch.mockResponseOnce(
-      JSON.stringify({
-        idToken: 'mock-id-token',
-        accessToken: 'mock-access-token',
-        scopes: 'a b c',
-        expiresInSeconds: '60',
-      }),
+    server.use(
+      rest.get('*', (_req, res, ctx) =>
+        res(
+          ctx.json({
+            idToken: 'mock-id-token',
+            accessToken: 'mock-access-token',
+            scopes: 'a b c',
+            expiresInSeconds: '60',
+          }),
+        ),
+      ),
     );
 
     const helper = new DefaultAuthConnector<any>(defaultOptions);
@@ -63,7 +71,11 @@ describe('DefaultAuthConnector', () => {
   });
 
   it('should handle failure to refresh session', async () => {
-    anyFetch.mockRejectOnce(new Error('Network NOPE'));
+    server.use(
+      rest.get('*', (_req, res, ctx) =>
+        res(ctx.status(500, 'Error: Network NOPE')),
+      ),
+    );
 
     const helper = new DefaultAuthConnector(defaultOptions);
     await expect(helper.refreshSession()).rejects.toThrow(
@@ -72,7 +84,7 @@ describe('DefaultAuthConnector', () => {
   });
 
   it('should handle failure response when refreshing session', async () => {
-    anyFetch.mockResponseOnce({}, { status: 401, statusText: 'NOPE' });
+    server.use(rest.get('*', (_req, res, ctx) => res(ctx.status(401, 'NOPE'))));
 
     const helper = new DefaultAuthConnector(defaultOptions);
     await expect(helper.refreshSession()).rejects.toThrow(
@@ -114,7 +126,8 @@ describe('DefaultAuthConnector', () => {
 
     expect(popupSpy).toBeCalledTimes(1);
     expect(popupSpy.mock.calls[0][0]).toMatchObject({
-      url: 'my-origin/api/auth/my-provider/start?scope=a%20b&env=production',
+      url:
+        'http://my-host/api/auth/my-provider/start?scope=a%20b&env=production',
     });
 
     await expect(sessionPromise).resolves.toEqual({
@@ -140,9 +153,9 @@ describe('DefaultAuthConnector', () => {
       instantPopup: true,
     });
 
-    expect(popupSpy).toBeCalledTimes(1);
-
     await expect(sessionPromise).resolves.toBe('my-session');
+
+    expect(popupSpy).toBeCalledTimes(1);
   });
 
   it('should use join func to join scopes', async () => {
@@ -162,7 +175,8 @@ describe('DefaultAuthConnector', () => {
 
     expect(popupSpy).toBeCalledTimes(1);
     expect(popupSpy.mock.calls[0][0]).toMatchObject({
-      url: 'my-origin/api/auth/my-provider/start?scope=-ab-&env=production',
+      url:
+        'http://my-host/api/auth/my-provider/start?scope=-ab-&env=production',
     });
   });
 });

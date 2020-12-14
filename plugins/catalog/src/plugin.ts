@@ -14,15 +14,27 @@
  * limitations under the License.
  */
 
-import { createPlugin } from '@backstage/core';
-import { CatalogPage } from './components/CatalogPage/CatalogPage';
-import { EntityPage } from './components/EntityPage/EntityPage';
-import { entityRoute, rootRoute } from './routes';
+import { CatalogApi, CatalogClient } from '@backstage/catalog-client';
+import {
+  createApiFactory,
+  createApiRef,
+  createPlugin,
+  discoveryApiRef,
+} from '@backstage/core';
+
+export const catalogApiRef = createApiRef<CatalogApi>({
+  id: 'plugin.catalog.service',
+  description:
+    'Used by the Catalog plugin to make requests to accompanying backend',
+});
 
 export const plugin = createPlugin({
   id: 'catalog',
-  register({ router }) {
-    router.addRoute(rootRoute, CatalogPage);
-    router.addRoute(entityRoute, EntityPage);
-  },
+  apis: [
+    createApiFactory({
+      api: catalogApiRef,
+      deps: { discoveryApi: discoveryApiRef },
+      factory: ({ discoveryApi }) => new CatalogClient({ discoveryApi }),
+    }),
+  ],
 });

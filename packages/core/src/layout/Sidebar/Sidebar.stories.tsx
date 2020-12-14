@@ -22,14 +22,13 @@ import {
   SidebarDivider,
   SidebarSearchField,
   SidebarSpace,
-  SidebarUserSettings,
 } from '.';
 import HomeOutlinedIcon from '@material-ui/icons/HomeOutlined';
 import AddCircleOutlineIcon from '@material-ui/icons/AddCircleOutline';
 import { MemoryRouter } from 'react-router-dom';
 
 export default {
-  title: 'Sidebar',
+  title: 'Layout/Sidebar',
   component: Sidebar,
   decorators: [
     (storyFn: () => JSX.Element) => (
@@ -45,7 +44,6 @@ const handleSearch = (input: string) => {
 
 export const SampleSidebar = () => (
   <Sidebar>
-    {/* <SidebarLogo /> */}
     <SidebarSearchField onSearch={handleSearch} />
     <SidebarDivider />
     <SidebarItem icon={HomeOutlinedIcon} to="#" text="Home" />
@@ -54,7 +52,5 @@ export const SampleSidebar = () => (
     <SidebarDivider />
     <SidebarIntro />
     <SidebarSpace />
-    <SidebarDivider />
-    <SidebarUserSettings />
   </Sidebar>
 );

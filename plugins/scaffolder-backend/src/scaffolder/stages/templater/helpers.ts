@@ -18,6 +18,7 @@ import Docker from 'dockerode';
 import fs from 'fs';
 import { TemplateEntityV1alpha1 } from '@backstage/catalog-model';
 import { InputError } from '@backstage/backend-common';
+import { spawn } from 'child_process';
 
 export type RunDockerContainerOptions = {
   imageName: string;
@@ -27,6 +28,16 @@ export type RunDockerContainerOptions = {
   templateDir: string;
   dockerClient: Docker;
   createOptions?: Docker.ContainerCreateOptions;
+};
+
+export type RunCommandOptions = {
+  command: string;
+  args: string[];
+  logStream?: Writable;
+};
+
+export type UserOptions = {
+  User?: string;
 };
 
 /**
@@ -41,6 +52,42 @@ export const getTemplaterKey = (entity: TemplateEntityV1alpha1): string => {
   }
 
   return templater;
+};
+
+/**
+ *
+ * @param options the options object
+ * @param options.command the command to run
+ * @param options.args the arguments to pass the command
+ * @param options.logStream the log streamer to capture log messages
+ */
+export const runCommand = async ({
+  command,
+  args,
+  logStream = new PassThrough(),
+}: RunCommandOptions) => {
+  await new Promise<void>((resolve, reject) => {
+    const process = spawn(command, args);
+
+    process.stdout.on('data', stream => {
+      logStream.write(stream);
+    });
+
+    process.stderr.on('data', stream => {
+      logStream.write(stream);
+    });
+
+    process.on('error', error => {
+      return reject(error);
+    });
+
+    process.on('close', code => {
+      if (code !== 0) {
+        return reject(`Command ${command} failed, exit code: ${code}`);
+      }
+      return resolve();
+    });
+  });
 };
 
 /**
@@ -62,7 +109,7 @@ export const runDockerContainer = async ({
   dockerClient,
   createOptions = {},
 }: RunDockerContainerOptions) => {
-  await new Promise((resolve, reject) => {
+  await new Promise<void>((resolve, reject) => {
     dockerClient.pull(imageName, {}, (err, stream) => {
       if (err) return reject(err);
       stream.pipe(logStream, { end: false });
@@ -71,6 +118,17 @@ export const runDockerContainer = async ({
       return undefined;
     });
   });
+
+  const userOptions: UserOptions = {};
+  // @ts-ignore
+  if (process.getuid && process.getgid) {
+    // Files that are created inside the Docker container will be owned by
+    // root on the host system on non Mac systems, because of reasons. Mainly the fact that
+    // volume sharing is done using NFS on Mac and actual mounts in Linux world.
+    // So we set the user in the container as the same user and group id as the host.
+    // On Windows we don't have process.getuid nor process.getgid
+    userOptions.User = `${process.getuid()}:${process.getgid()}`;
+  }
 
   const [{ Error: error, StatusCode: statusCode }] = await dockerClient.run(
     imageName,
@@ -86,11 +144,7 @@ export const runDockerContainer = async ({
           `${await fs.promises.realpath(templateDir)}:/template`,
         ],
       },
-      // Files that are created inside the Docker container will be owned by
-      // root on the host system on non Mac systems, because of reasons. Mainly the fact that
-      // volume sharing is done using NFS on Mac and actual mounts in Linux world.
-      // So we set the user in the container as the same user and group id as the host.
-      User: `${process.getuid()}:${process.getgid()}`,
+      ...userOptions,
       // Set the home directory inside the container as something that applications can
       // write to, otherwise they will just flop and fail trying to write to /
       Env: ['HOME=/tmp'],

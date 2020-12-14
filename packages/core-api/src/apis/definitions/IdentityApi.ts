@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import { createApiRef } from '../ApiRef';
+import { ApiRef, createApiRef } from '../system';
 import { ProfileInfo } from './auth';
 
 /**
@@ -46,12 +46,12 @@ export type IdentityApi = {
   // TODO: getProfile(): Promise<Profile> - We want this to be async when added, but needs more work.
 
   /**
-   * Log out the current user
+   * Sign out the current user
    */
-  logout(): Promise<void>;
+  signOut(): Promise<void>;
 };
 
-export const identityApiRef = createApiRef<IdentityApi>({
+export const identityApiRef: ApiRef<IdentityApi> = createApiRef({
   id: 'core.identity',
   description: 'Provides access to the identity of the signed in user',
 });

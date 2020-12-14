@@ -13,15 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
-import React, { FC } from 'react';
+import React from 'react';
 import {
   Content,
   Header,
   HeaderLabel,
   Page,
   Progress,
-  pageTheme,
   useApi,
 } from '@backstage/core';
 import { useAsync } from 'react-use';
@@ -30,7 +28,7 @@ import { graphQlBrowseApiRef } from '../../lib/api';
 import { GraphiQLBrowser } from '../GraphiQLBrowser';
 import { Typography } from '@material-ui/core';
 
-export const GraphiQLPage: FC<{}> = () => {
+export const GraphiQLPage = () => {
   const graphQlBrowseApi = useApi(graphQlBrowseApiRef);
   const endpoints = useAsync(() => graphQlBrowseApi.getEndpoints());
 
@@ -60,7 +58,7 @@ export const GraphiQLPage: FC<{}> = () => {
   }
 
   return (
-    <Page theme={pageTheme.tool}>
+    <Page themeId="tool">
       <Header title="GraphiQL">
         <HeaderLabel label="Owner" value="Spotify" />
         <HeaderLabel label="Lifecycle" value="Alpha" />

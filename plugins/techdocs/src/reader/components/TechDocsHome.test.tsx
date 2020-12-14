@@ -13,24 +13,37 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import { TechDocsHome } from './TechDocsHome';
-import React from 'react';
-import { render } from '@testing-library/react';
+
+import { ApiProvider, ApiRegistry } from '@backstage/core-api';
+import { CatalogApi, catalogApiRef } from '@backstage/plugin-catalog';
 import { wrapInTestApp } from '@backstage/test-utils';
+import { render } from '@testing-library/react';
+import React from 'react';
+import { TechDocsHome } from './TechDocsHome';
 
 describe('TechDocs Home', () => {
-  it('should render a TechDocs home page', () => {
-    const { getByTestId, queryByText } = render(
-      wrapInTestApp(<TechDocsHome />),
+  const catalogApi: Partial<CatalogApi> = {
+    getEntities: () => Promise.resolve({ items: [] }),
+  };
+
+  const apiRegistry = ApiRegistry.from([[catalogApiRef, catalogApi]]);
+
+  it('should render a TechDocs home page', async () => {
+    const { findByTestId, findByText } = render(
+      wrapInTestApp(
+        <ApiProvider apis={apiRegistry}>
+          <TechDocsHome />
+        </ApiProvider>,
+      ),
     );
 
     // Header
-    expect(queryByText('Documentation')).toBeInTheDocument();
+    expect(await findByText('Documentation')).toBeInTheDocument();
     expect(
-      queryByText(/Documentation available in Backstage/i),
+      await findByText(/Documentation available in Backstage/i),
     ).toBeInTheDocument();
 
     // Explore Content
-    expect(getByTestId('docs-explore')).toBeDefined();
+    expect(await findByTestId('docs-explore')).toBeDefined();
   });
 });

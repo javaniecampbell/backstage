@@ -1,7 +1,7 @@
 # OAuthApi
 
 The OAuthApi type is defined at
-[packages/core-api/src/apis/definitions/auth.ts:67](https://github.com/spotify/backstage/blob/f8780ff32509d0326bc513791ea60846d7614b34/packages/core-api/src/apis/definitions/auth.ts#L67).
+[packages/core-api/src/apis/definitions/auth.ts:67](https://github.com/backstage/backstage/blob/ca535f2f66c3a4980c80f4b1a049dfd07569010e/packages/core-api/src/apis/definitions/auth.ts#L67).
 
 The following Utility APIs implement this type:
 
@@ -10,6 +10,8 @@ The following Utility APIs implement this type:
 - [gitlabAuthApiRef](./README.md#gitlabauth)
 
 - [googleAuthApiRef](./README.md#googleauth)
+
+- [microsoftAuthApiRef](./README.md#microsoftauth)
 
 - [oauth2ApiRef](./README.md#oauth2)
 
@@ -48,14 +50,6 @@ getAccessToken(
   ): Promise&lt;string&gt;
 </pre>
 
-### logout()
-
-Log out the user's session. This will reload the page.
-
-<pre>
-logout(): Promise&lt;void&gt;
-</pre>
-
 ## Supporting types
 
 These types are part of the API declaration, but may not be unique to this API.
@@ -88,7 +82,7 @@ export type AuthRequestOptions = {
 </pre>
 
 Defined at
-[packages/core-api/src/apis/definitions/auth.ts:40](https://github.com/spotify/backstage/blob/f8780ff32509d0326bc513791ea60846d7614b34/packages/core-api/src/apis/definitions/auth.ts#L40).
+[packages/core-api/src/apis/definitions/auth.ts:40](https://github.com/backstage/backstage/blob/ca535f2f66c3a4980c80f4b1a049dfd07569010e/packages/core-api/src/apis/definitions/auth.ts#L40).
 
 Referenced by: [getAccessToken](#getaccesstoken).
 
@@ -114,6 +108,6 @@ export type OAuthScope = string | string[]
 </pre>
 
 Defined at
-[packages/core-api/src/apis/definitions/auth.ts:38](https://github.com/spotify/backstage/blob/f8780ff32509d0326bc513791ea60846d7614b34/packages/core-api/src/apis/definitions/auth.ts#L38).
+[packages/core-api/src/apis/definitions/auth.ts:38](https://github.com/backstage/backstage/blob/ca535f2f66c3a4980c80f4b1a049dfd07569010e/packages/core-api/src/apis/definitions/auth.ts#L38).
 
 Referenced by: [getAccessToken](#getaccesstoken).

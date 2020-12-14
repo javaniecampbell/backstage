@@ -17,19 +17,24 @@
 import type { Transformer } from './index';
 
 type AddLinkClickListenerOptions = {
+  baseUrl: string;
   onClick: (e: MouseEvent, newUrl: string) => void;
 };
 
 export const addLinkClickListener = ({
+  baseUrl,
   onClick,
 }: AddLinkClickListenerOptions): Transformer => {
   return dom => {
     Array.from(dom.getElementsByTagName('a')).forEach(elem => {
       elem.addEventListener('click', (e: MouseEvent) => {
-        e.preventDefault();
-        const target = e.target as HTMLAnchorElement;
-        if (target?.getAttribute('href')) {
-          onClick(e, target.getAttribute('href')!);
+        const target = elem as HTMLAnchorElement;
+        const href = target.getAttribute('href');
+
+        if (!href) return;
+        if (href.startsWith(baseUrl)) {
+          e.preventDefault();
+          onClick(e, href);
         }
       });
     });

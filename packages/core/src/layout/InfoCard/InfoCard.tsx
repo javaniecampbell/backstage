@@ -14,12 +14,13 @@
  * limitations under the License.
  */
 
-import React, { FC, ReactNode } from 'react';
+import React, { ReactNode } from 'react';
 import {
   Card,
   CardActions,
   CardContent,
   CardHeader,
+  CardHeaderProps,
   Divider,
   withStyles,
   makeStyles,
@@ -29,21 +30,26 @@ import { ErrorBoundary } from '../ErrorBoundary';
 import { BottomLink, BottomLinkProps } from '../BottomLink';
 
 const useStyles = makeStyles(theme => ({
-  header: {
-    padding: theme.spacing(2, 2, 2, 2.5),
-  },
   noPadding: {
     padding: 0,
     '&:last-child': {
       paddingBottom: 0,
     },
   },
+  header: {
+    display: 'inline-block',
+    padding: theme.spacing(2, 2, 2, 2.5),
+  },
+  headerTitle: {
+    fontWeight: 700,
+  },
+  headerSubheader: {
+    paddingTop: theme.spacing(1),
+  },
+  headerAvatar: {},
+  headerAction: {},
+  headerContent: {},
 }));
-
-const BoldHeader = withStyles(theme => ({
-  title: { fontWeight: 700 },
-  subheader: { paddingTop: theme.spacing(1) },
-}))(CardHeader);
 
 const CardActionsTopRight = withStyles(theme => ({
   root: {
@@ -64,36 +70,34 @@ const VARIANT_STYLES = {
       flexDirection: 'column',
       height: '100%',
     },
+    gridItem: {
+      display: 'flex',
+      flexDirection: 'column',
+      height: 'calc(100% - 10px)', // for pages without content header
+      marginBottom: '10px',
+    },
+    /**
+     * @deprecated This variant is replaced by 'gridItem'.
+     */
     height100: {
       display: 'flex',
       flexDirection: 'column',
       height: 'calc(100% - 10px)', // for pages without content header
       marginBottom: '10px',
     },
-    contentheader: {
-      height: 'calc(100% - 40px)', // for pages with content header
-    },
-    contentheadertabs: {
-      height: 'calc(100% - 97px)', // for pages with content header and tabs (Tingle)
-    },
-    noShrink: {
-      flexShrink: 0,
-    },
-    minheight300: {
-      minHeight: 300,
-      overflow: 'initial',
-    },
   },
   cardContent: {
     fullHeight: {
       flex: 1,
     },
+    /**
+     * @deprecated This variant is replaced by 'gridItem'.
+     */
     height100: {
       flex: 1,
     },
-    contentRow: {
-      display: 'flex',
-      flexDirection: 'row',
+    gridItem: {
+      flex: 1,
     },
   },
 };
@@ -111,13 +115,10 @@ const VARIANT_STYLES = {
  * By default the InfoCard has no custom layout of its children, but is treated as a block element. A
  * couple common variants are provided and can be specified via the variant property:
  *
- * Display the card full height suitable for DataGrid:
+ * When the InfoCard is displayed as a grid item within a grid, you may want items to have the same height for all items.
+ * Set to the 'gridItem' variant to display the InfoCard with full height suitable for Grid:
  *
- *   <InfoCard variant="height100">...</InfoCard>
- *
- * Variants can be combined in a whitespace delimited list like so:
- *
- *   <InfoCard variant="noShrink">...</InfoCard>
+ *   <InfoCard variant="gridItem">...</InfoCard>
  */
 type Props = {
   title?: ReactNode;
@@ -130,7 +131,7 @@ type Props = {
   cardStyle?: object;
   children?: ReactNode;
   headerStyle?: object;
-  headerProps?: object;
+  headerProps?: CardHeaderProps;
   actionsClassName?: string;
   actions?: ReactNode;
   cardClassName?: string;
@@ -139,10 +140,10 @@ type Props = {
   noPadding?: boolean;
 };
 
-export const InfoCard: FC<Props> = ({
+export const InfoCard = ({
   title,
   subheader,
-  divider,
+  divider = true,
   deepLink,
   slackChannel = '#backstage',
   variant,
@@ -155,19 +156,23 @@ export const InfoCard: FC<Props> = ({
   actionsTopRight,
   className,
   noPadding,
-}) => {
+}: Props): JSX.Element => {
   const classes = useStyles();
-
   /**
    * If variant is specified, we build up styles for that particular variant for both
    * the Card and the CardContent (since these need to be synced)
    */
   let calculatedStyle = {};
   let calculatedCardStyle = {};
-
   if (variant) {
     const variants = variant.split(/[\s]+/g);
     variants.forEach(name => {
+      if (name === 'height100') {
+        // eslint-disable-next-line no-console
+        console.warn(
+          "Variant 'height100' of InfoCard is deprecated. Use variant 'gridItem' instead.",
+        );
+      }
       calculatedStyle = {
         ...calculatedStyle,
         ...VARIANT_STYLES.card[name as keyof typeof VARIANT_STYLES['card']],
@@ -185,16 +190,20 @@ export const InfoCard: FC<Props> = ({
     <Card style={calculatedStyle} className={className}>
       <ErrorBoundary slackChannel={slackChannel}>
         {title && (
-          <>
-            <BoldHeader
-              className={classes.header}
-              title={title}
-              subheader={subheader}
-              style={{ display: 'inline-block', ...headerStyle }}
-              {...headerProps}
-            />
-            <Divider />
-          </>
+          <CardHeader
+            classes={{
+              root: classes.header,
+              title: classes.headerTitle,
+              subheader: classes.headerSubheader,
+              avatar: classes.headerAvatar,
+              action: classes.headerAction,
+              content: classes.headerContent,
+            }}
+            title={title}
+            subheader={subheader}
+            style={{ ...headerStyle }}
+            {...headerProps}
+          />
         )}
         {actionsTopRight && (
           <CardActionsTopRight>{actionsTopRight}</CardActionsTopRight>

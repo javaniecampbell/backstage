@@ -14,46 +14,59 @@
  * limitations under the License.
  */
 
-import React, { FC } from 'react';
-import PropTypes from 'prop-types';
+import React from 'react';
 import SyntaxHighlighter from 'react-syntax-highlighter';
 import { docco, dark } from 'react-syntax-highlighter/dist/cjs/styles/hljs';
 import { useTheme } from '@material-ui/core';
 import { BackstageTheme } from '@backstage/theme';
+import { CopyTextButton } from '../CopyTextButton';
 
 type Props = {
   text: string;
   language: string;
   showLineNumbers?: boolean;
+  showCopyCodeButton?: boolean;
+  highlightedNumbers?: number[];
+  customStyle?: any;
 };
 
-const defaultProps = {
-  showLineNumbers: false,
-};
-
-export const CodeSnippet: FC<Props> = props => {
-  const { text, language, showLineNumbers } = {
-    ...defaultProps,
-    ...props,
-  };
-
+export const CodeSnippet = ({
+  text,
+  language,
+  showLineNumbers = false,
+  showCopyCodeButton = false,
+  highlightedNumbers,
+  customStyle,
+}: Props) => {
   const theme = useTheme<BackstageTheme>();
   const mode = theme.palette.type === 'dark' ? dark : docco;
-
+  const highlightColor = theme.palette.type === 'dark' ? '#256bf3' : '#e6ffed';
   return (
-    <SyntaxHighlighter
-      language={language}
-      style={mode}
-      showLineNumbers={showLineNumbers}
-    >
-      {text}
-    </SyntaxHighlighter>
+    <div style={{ position: 'relative' }}>
+      <SyntaxHighlighter
+        customStyle={customStyle}
+        language={language}
+        style={mode}
+        showLineNumbers={showLineNumbers}
+        wrapLines
+        lineNumberStyle={{ color: theme.palette.textVerySubtle }}
+        lineProps={(lineNumber: number) =>
+          highlightedNumbers?.includes(lineNumber)
+            ? {
+                style: {
+                  backgroundColor: highlightColor,
+                },
+              }
+            : {}
+        }
+      >
+        {text}
+      </SyntaxHighlighter>
+      {showCopyCodeButton && (
+        <div style={{ position: 'absolute', top: 0, right: 0 }}>
+          <CopyTextButton text={text} />
+        </div>
+      )}
+    </div>
   );
-};
-
-// Type check for the JS files using this core component
-CodeSnippet.propTypes = {
-  text: PropTypes.string.isRequired,
-  language: PropTypes.string.isRequired,
-  showLineNumbers: PropTypes.bool,
 };

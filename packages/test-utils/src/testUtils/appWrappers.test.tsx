@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import React, { FC, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { render } from '@testing-library/react';
 import { wrapInTestApp, renderInTestApp } from './appWrappers';
 import { Route, Routes } from 'react-router';
@@ -49,15 +49,12 @@ describe('wrapInTestApp', () => {
       expect.stringMatching(
         /^Warning: An update to %s inside a test was not wrapped in act\(...\)/,
       ),
-      expect.stringMatching(
-        /^Warning: An update to %s inside a test was not wrapped in act\(...\)/,
-      ),
     ]);
   });
 
   it('should render a component in a test app without warning about missing act()', async () => {
     const { error } = await withLogCollector(['error'], async () => {
-      const Foo: FC<{}> = () => {
+      const Foo = () => {
         return <p>foo</p>;
       };
 
@@ -69,7 +66,7 @@ describe('wrapInTestApp', () => {
   });
 
   it('should render a node in a test app', async () => {
-    const Foo: FC<{}> = () => {
+    const Foo = () => {
       return <p>foo</p>;
     };
 
@@ -78,7 +75,7 @@ describe('wrapInTestApp', () => {
   });
 
   it('should provide mock API implementations', async () => {
-    const A: FC<{}> = () => {
+    const A = () => {
       const errorApi = useApi(errorApiRef);
       errorApi.post(new Error('NOPE'));
       return null;
@@ -99,7 +96,7 @@ describe('wrapInTestApp', () => {
   it('should allow custom API implementations', async () => {
     const mockErrorApi = new MockErrorApi({ collect: true });
 
-    const A: FC<{}> = () => {
+    const A = () => {
       const errorApi = useApi(errorApiRef);
       useEffect(() => {
         errorApi.post(new Error('NOPE'));

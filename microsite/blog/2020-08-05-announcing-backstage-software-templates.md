@@ -1,6 +1,6 @@
 ---
 title: Announcing Backstage Software Templates
-author: Stefan Ålund
+author: Stefan Ålund, Spotify
 authorURL: https://twitter.com/stalund
 ---
 
@@ -35,11 +35,11 @@ Since the templates can be customized to integrate with your existing infrastruc
 
 ### Golden Paths pave the way
 
-You can customize Backstage Software Templates to fit your organization’s standards. Using Go instead of Java? CircleCI instead of Jenkins? Serverless instead of Kubernetes? GCP instead of AWS? [Make your own recipes for any software component](/docs/features/software-templates/adding-templates.md) and your best practices will be baked right in.
+You can customize Backstage Software Templates to fit your organization’s standards. Using Go instead of Java? CircleCI instead of Jenkins? Serverless instead of Kubernetes? GCP instead of AWS? [Make your own recipes for any software component](https://backstage.io/docs/features/software-templates/adding-templates) and your best practices will be baked right in.
 
 ## Getting started
 
-The sample Software Templates are available under `/create`. If you're setting up Backstage for the first time, follow [Getting Started with Backstage](/docs/getting-started/index.md) and go to `http://localhost:3000/create`. If you’ve already been running Backstage locally, run the command `yarn lerna run mock-data` to load the new sample templates into the Service Catalog first.
+The sample Software Templates are available under `/create`. If you're setting up Backstage for the first time, follow [Getting Started with Backstage](https://backstage.io/docs/getting-started/) and go to `http://localhost:3000/create`.
 
 ![available-templates](assets/2020-08-05/templates.png)
 
@@ -69,10 +69,10 @@ New components, of course, get added automatically to the Backstage Service Cata
 
 ## Define your standards
 
-Backstage ships with four example templates, but since these are likely not the (only) ones you want to promote inside your company, the next step is to add [your own templates](/docs/features/software-templates/adding-templates.md). Using Backstage’s Software Templates feature, it’s easy to help your engineers get started building software with your organization’s best practices built-in.
+Backstage ships with four example templates, but since these are likely not the (only) ones you want to promote inside your company, the next step is to add [your own templates](https://backstage.io/docs/features/software-templates/software-templates-index). Using Backstage’s Software Templates feature, it’s easy to help your engineers get started building software with your organization’s best practices built-in.
 
 We have learned that one of the keys to getting these standards adopted is to keep an open process. Templates are code. By making it clear to your engineers that you are open to pull requests, and that teams with different needs can add their own templates, you are on the path of striking a good balance between autonomy and standardization.
 
-If you have feedback or questions, please open a [GitHub issue](https://github.com/spotify/backstage/issues), ping us on [Discord chat](https://discord.gg/EBHEGzX) or send me an email at [alund@spotify.com](mailto:alund@spotify.com) 🙏
+If you have feedback or questions, please open a [GitHub issue](https://github.com/backstage/backstage/issues), ping us on [Discord chat](https://discord.gg/EBHEGzX) or send us an email at [backstage-interest@spotify.com](mailto:backstage-interest@spotify.com) 🙏
 
 To get regular product updates and news about the Backstage community, sign up for the [Backstage newsletter](https://mailchi.mp/spotify/backstage-community).

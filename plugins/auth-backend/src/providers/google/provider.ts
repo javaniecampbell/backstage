@@ -15,41 +15,57 @@
  */
 
 import express from 'express';
+import passport from 'passport';
 import { Strategy as GoogleStrategy } from 'passport-google-oauth20';
+import { Logger } from 'winston';
+import { CatalogIdentityClient } from '../../lib/catalog';
 import {
+  encodeState,
+  OAuthAdapter,
+  OAuthEnvironmentHandler,
+  OAuthHandlers,
+  OAuthProviderOptions,
+  OAuthRefreshRequest,
+  OAuthResponse,
+  OAuthStartRequest,
+} from '../../lib/oauth';
+import {
+  executeFetchUserProfileStrategy,
   executeFrameHandlerStrategy,
   executeRedirectStrategy,
   executeRefreshTokenStrategy,
   makeProfileInfo,
-  executeFetchUserProfileStrategy,
-} from '../../lib/PassportStrategyHelper';
-import {
-  OAuthProviderHandlers,
-  RedirectInfo,
-  AuthProviderConfig,
-  OAuthProviderOptions,
-  OAuthResponse,
   PassportDoneCallback,
-} from '../types';
-import { OAuthProvider } from '../../lib/OAuthProvider';
-import passport from 'passport';
-import { Logger } from 'winston';
-import { TokenIssuer } from '../../identity';
-import { Config } from '@backstage/config';
+} from '../../lib/passport';
+import { AuthProviderFactory, RedirectInfo } from '../types';
 
 type PrivateInfo = {
   refreshToken: string;
 };
 
-export class GoogleAuthProvider implements OAuthProviderHandlers {
-  private readonly _strategy: GoogleStrategy;
+export type GoogleAuthProviderOptions = OAuthProviderOptions & {
+  logger: Logger;
+  identityClient: CatalogIdentityClient;
+};
 
-  constructor(options: OAuthProviderOptions) {
+export class GoogleAuthProvider implements OAuthHandlers {
+  private readonly _strategy: GoogleStrategy;
+  private readonly logger: Logger;
+  private readonly identityClient: CatalogIdentityClient;
+
+  constructor(options: GoogleAuthProviderOptions) {
+    this.logger = options.logger;
+    this.identityClient = options.identityClient;
     // TODO: throw error if env variables not set?
     this._strategy = new GoogleStrategy(
-      // We need passReqToCallback set to false to get params, but there's
-      // no matching type signature for that, so instead behold this beauty
-      { ...options, passReqToCallback: false as true },
+      {
+        clientID: options.clientId,
+        clientSecret: options.clientSecret,
+        callbackURL: options.callbackUrl,
+        // We need passReqToCallback set to false to get params, but there's
+        // no matching type signature for that, so instead behold this beauty
+        passReqToCallback: false as true,
+      },
       (
         accessToken: any,
         refreshToken: any,
@@ -77,16 +93,13 @@ export class GoogleAuthProvider implements OAuthProviderHandlers {
     );
   }
 
-  async start(
-    req: express.Request,
-    options: Record<string, string>,
-  ): Promise<RedirectInfo> {
-    const providerOptions = {
-      ...options,
+  async start(req: OAuthStartRequest): Promise<RedirectInfo> {
+    return await executeRedirectStrategy(req, this._strategy, {
       accessType: 'offline',
       prompt: 'consent',
-    };
-    return await executeRedirectStrategy(req, this._strategy, providerOptions);
+      scope: req.scope,
+      state: encodeState(req.state),
+    });
   }
 
   async handler(
@@ -103,11 +116,11 @@ export class GoogleAuthProvider implements OAuthProviderHandlers {
     };
   }
 
-  async refresh(refreshToken: string, scope: string): Promise<OAuthResponse> {
+  async refresh(req: OAuthRefreshRequest): Promise<OAuthResponse> {
     const { accessToken, params } = await executeRefreshTokenStrategy(
       this._strategy,
-      refreshToken,
-      scope,
+      req.refreshToken,
+      req.scope,
     );
 
     const profile = await executeFetchUserProfileStrategy(
@@ -136,51 +149,55 @@ export class GoogleAuthProvider implements OAuthProviderHandlers {
       throw new Error('Google profile contained no email');
     }
 
-    // TODO(Rugvip): Hardcoded to the local part of the email for now
-    const id = profile.email.split('@')[0];
+    try {
+      const user = await this.identityClient.findUser({
+        annotations: {
+          'google.com/email': profile.email,
+        },
+      });
 
-    return { ...response, backstageIdentity: { id } };
-  }
-}
-
-export function createGoogleProvider(
-  { baseUrl }: AuthProviderConfig,
-  _: string,
-  envConfig: Config,
-  logger: Logger,
-  tokenIssuer: TokenIssuer,
-) {
-  const providerId = 'google';
-  const secure = envConfig.getBoolean('secure');
-  const appOrigin = envConfig.getString('appOrigin');
-  const clientID = envConfig.getString('clientId');
-  const clientSecret = envConfig.getString('clientSecret');
-  const callbackURL = `${baseUrl}/${providerId}/handler/frame`;
-
-  const opts = {
-    clientID,
-    clientSecret,
-    callbackURL,
-  };
-
-  if (!opts.clientID || !opts.clientSecret) {
-    if (process.env.NODE_ENV !== 'development') {
-      throw new Error(
-        'Failed to initialize Google auth provider, set AUTH_GOOGLE_CLIENT_ID and AUTH_GOOGLE_CLIENT_SECRET env vars',
+      return {
+        ...response,
+        backstageIdentity: {
+          id: user.metadata.name,
+        },
+      };
+    } catch (error) {
+      this.logger.warn(
+        `Failed to look up user, ${error}, falling back to allowing login based on email pattern, this will probably break in the future`,
       );
+      return {
+        ...response,
+        backstageIdentity: { id: profile.email.split('@')[0] },
+      };
     }
-
-    logger.warn(
-      'Google auth provider disabled, set AUTH_GOOGLE_CLIENT_ID and AUTH_GOOGLE_CLIENT_SECRET env vars to enable',
-    );
-    return undefined;
   }
-  return new OAuthProvider(new GoogleAuthProvider(opts), {
-    disableRefresh: false,
-    providerId,
-    secure,
-    baseUrl,
-    appOrigin,
-    tokenIssuer,
-  });
 }
+
+export const createGoogleProvider: AuthProviderFactory = ({
+  providerId,
+  globalConfig,
+  config,
+  logger,
+  tokenIssuer,
+  catalogApi,
+}) =>
+  OAuthEnvironmentHandler.mapConfig(config, envConfig => {
+    const clientId = envConfig.getString('clientId');
+    const clientSecret = envConfig.getString('clientSecret');
+    const callbackUrl = `${globalConfig.baseUrl}/${providerId}/handler/frame`;
+
+    const provider = new GoogleAuthProvider({
+      clientId,
+      clientSecret,
+      callbackUrl,
+      logger,
+      identityClient: new CatalogIdentityClient({ catalogApi }),
+    });
+
+    return OAuthAdapter.fromConfig(globalConfig, provider, {
+      disableRefresh: false,
+      providerId,
+      tokenIssuer,
+    });
+  });

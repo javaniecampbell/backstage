@@ -14,23 +14,41 @@
  * limitations under the License.
  */
 
-import { Entity, Location } from '@backstage/catalog-model';
-import type { EntityFilters } from '../database';
+import { Entity, EntityRelationSpec, Location } from '@backstage/catalog-model';
+import type { EntityFilter } from '../database';
 
 //
 // Entities
 //
 
+export type EntityUpsertRequest = {
+  entity: Entity;
+  relations: EntityRelationSpec[];
+};
+
+export type EntityUpsertResponse = {
+  entityId: string;
+  entity?: Entity;
+};
+
 export type EntitiesCatalog = {
-  entities(filters?: EntityFilters): Promise<Entity[]>;
-  entityByUid(uid: string): Promise<Entity | undefined>;
-  entityByName(
-    kind: string,
-    namespace: string | undefined,
-    name: string,
-  ): Promise<Entity | undefined>;
-  addOrUpdateEntity(entity: Entity, locationId?: string): Promise<Entity>;
+  entities(filter?: EntityFilter): Promise<Entity[]>;
   removeEntityByUid(uid: string): Promise<void>;
+
+  /**
+   * Writes a number of entities efficiently to storage.
+   *
+   * @param entities Some entities
+   * @param locationId The location that they all belong to
+   */
+  batchAddOrUpdateEntities(
+    entities: EntityUpsertRequest[],
+    options?: {
+      locationId?: string;
+      dryRun?: boolean;
+      outputEntities?: boolean;
+    },
+  ): Promise<EntityUpsertResponse[]>;
 };
 
 //
@@ -62,7 +80,10 @@ export type LocationsCatalog = {
   locations(): Promise<LocationResponse[]>;
   location(id: string): Promise<LocationResponse>;
   locationHistory(id: string): Promise<LocationUpdateLogEvent[]>;
-  logUpdateSuccess(locationId: string, entityName?: string): Promise<void>;
+  logUpdateSuccess(
+    locationId: string,
+    entityName?: string | string[],
+  ): Promise<void>;
   logUpdateFailure(
     locationId: string,
     error?: Error,

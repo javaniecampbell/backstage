@@ -14,27 +14,24 @@
  * limitations under the License.
  */
 
-import { getVoidLogger } from '@backstage/backend-common';
-import { makeValidator } from '@backstage/catalog-model';
+import { getVoidLogger, resolvePackagePath } from '@backstage/backend-common';
 import Knex from 'knex';
-import path from 'path';
 import { Logger } from 'winston';
 import { CommonDatabase } from './CommonDatabase';
 import { Database } from './types';
+import { v4 as uuidv4 } from 'uuid';
 
-const migrationsDir = path.resolve(
-  require.resolve('@backstage/plugin-catalog-backend/package.json'),
-  '../migrations',
+const migrationsDir = resolvePackagePath(
+  '@backstage/plugin-catalog-backend',
+  'migrations',
 );
 
 export type CreateDatabaseOptions = {
   logger: Logger;
-  fieldNormalizer: (value: string) => string;
 };
 
 const defaultOptions: CreateDatabaseOptions = {
   logger: getVoidLogger(),
-  fieldNormalizer: makeValidator().normalizeEntityName,
 };
 
 export class DatabaseManager {
@@ -45,37 +42,66 @@ export class DatabaseManager {
     await knex.migrate.latest({
       directory: migrationsDir,
     });
-    const { logger, fieldNormalizer } = { ...defaultOptions, ...options };
-    return new CommonDatabase(knex, fieldNormalizer, logger);
+    const { logger } = { ...defaultOptions, ...options };
+    return new CommonDatabase(knex, logger);
   }
 
-  public static async createInMemoryDatabase(
-    options: Partial<CreateDatabaseOptions> = {},
-  ): Promise<Database> {
+  public static async createInMemoryDatabase(): Promise<Database> {
+    const knex = await this.createInMemoryDatabaseConnection();
+    return await this.createDatabase(knex);
+  }
+
+  public static async createInMemoryDatabaseConnection(): Promise<Knex> {
     const knex = Knex({
       client: 'sqlite3',
       connection: ':memory:',
       useNullAsDefault: true,
     });
+
     knex.client.pool.on('createSuccess', (_eventId: any, resource: any) => {
       resource.run('PRAGMA foreign_keys = ON', () => {});
     });
-    return DatabaseManager.createDatabase(knex, options);
+
+    return knex;
   }
 
   public static async createTestDatabase(): Promise<Database> {
-    const knex = Knex({
+    const knex = await this.createTestDatabaseConnection();
+    return await this.createDatabase(knex);
+  }
+
+  public static async createTestDatabaseConnection(): Promise<Knex> {
+    const config: Knex.Config<any> = {
+      /*
+      client: 'pg',
+      connection: {
+        host: 'localhost',
+        user: 'postgres',
+        password: 'postgres',
+      },
+      */
       client: 'sqlite3',
       connection: ':memory:',
       useNullAsDefault: true,
-    });
+    };
+
+    let knex = Knex(config);
+    if (typeof config.connection !== 'string') {
+      const tempDbName = `d${uuidv4().replace(/-/g, '')}`;
+      await knex.raw(`CREATE DATABASE ${tempDbName};`);
+      knex = Knex({
+        ...config,
+        connection: {
+          ...config.connection,
+          database: tempDbName,
+        },
+      });
+    }
+
     knex.client.pool.on('createSuccess', (_eventId: any, resource: any) => {
       resource.run('PRAGMA foreign_keys = ON', () => {});
     });
-    await knex.migrate.latest({
-      directory: migrationsDir,
-    });
-    const { logger, fieldNormalizer } = defaultOptions;
-    return new CommonDatabase(knex, fieldNormalizer, logger);
+
+    return knex;
   }
 }

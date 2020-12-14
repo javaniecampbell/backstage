@@ -14,13 +14,17 @@
  * limitations under the License.
  */
 
-import React, { Fragment, ReactNode, CSSProperties, FC } from 'react';
+import React, { ReactNode, CSSProperties, PropsWithChildren } from 'react';
 import { Helmet } from 'react-helmet';
-import { Typography, Tooltip, makeStyles } from '@material-ui/core';
+import {
+  Link,
+  Typography,
+  Tooltip,
+  makeStyles,
+  Breadcrumbs,
+} from '@material-ui/core';
+import ChevronRightIcon from '@material-ui/icons/ChevronRight';
 import { BackstageTheme } from '@backstage/theme';
-
-import { Theme } from '../Page/Page';
-import { Waves } from './Waves';
 
 const useStyles = makeStyles<BackstageTheme>(theme => ({
   header: {
@@ -36,6 +40,9 @@ const useStyles = makeStyles<BackstageTheme>(theme => ({
     flexWrap: 'wrap',
     justifyContent: 'flex-end',
     alignItems: 'center',
+    backgroundImage: theme.page.backgroundImage,
+    backgroundPosition: 'center',
+    backgroundSize: 'cover',
   },
   leftItemsBox: {
     flex: '1 1 auto',
@@ -66,6 +73,21 @@ const useStyles = makeStyles<BackstageTheme>(theme => ({
     marginBottom: theme.spacing(1),
     color: theme.palette.bursts.fontColor,
   },
+  breadcrumb: {
+    fontSize: 'calc(15px + 1 * ((100vw - 320px) / 680))',
+    color: theme.palette.bursts.fontColor,
+  },
+  breadcrumbType: {
+    fontSize: 'inherit',
+    opacity: 0.7,
+    marginRight: -theme.spacing(0.3),
+    marginBottom: theme.spacing(0.3),
+  },
+  breadcrumbTitle: {
+    fontSize: 'inherit',
+    marginLeft: -theme.spacing(0.3),
+    marginBottom: theme.spacing(0.3),
+  },
 }));
 
 type HeaderStyles = ReturnType<typeof useStyles>;
@@ -83,7 +105,8 @@ type Props = {
 
 type TypeFragmentProps = {
   classes: HeaderStyles;
-  type?: Props['title'];
+  pageTitle: string | ReactNode;
+  type?: Props['type'];
   typeLink?: Props['typeLink'];
 };
 
@@ -98,24 +121,35 @@ type SubtitleFragmentProps = {
   subtitle?: Props['subtitle'];
 };
 
-const TypeFragment: FC<TypeFragmentProps> = ({ type, typeLink, classes }) => {
+const TypeFragment = ({
+  type,
+  typeLink,
+  classes,
+  pageTitle,
+}: TypeFragmentProps) => {
   if (!type) {
     return null;
   }
 
   if (!typeLink) {
-    // TODO: Add breadcrumbs.
     return <Typography className={classes.type}>{type}</Typography>;
   }
 
-  return <Typography className={classes.type}>{type}</Typography>;
+  return (
+    <Breadcrumbs
+      aria-label="breadcrumb"
+      separator={<ChevronRightIcon fontSize="small" />}
+      className={classes.breadcrumb}
+    >
+      <Link href={typeLink} color="inherit">
+        <Typography className={classes.breadcrumbType}> {type}</Typography>
+      </Link>
+      <Typography className={classes.breadcrumbTitle}>{pageTitle}</Typography>
+    </Breadcrumbs>
+  );
 };
 
-const TitleFragment: FC<TitleFragmentProps> = ({
-  pageTitle,
-  classes,
-  tooltip,
-}) => {
+const TitleFragment = ({ pageTitle, classes, tooltip }: TitleFragmentProps) => {
   const FinalTitle = (
     <Typography className={classes.title} variant="h4">
       {pageTitle}
@@ -133,7 +167,7 @@ const TitleFragment: FC<TitleFragmentProps> = ({
   );
 };
 
-const SubtitleFragment: FC<SubtitleFragmentProps> = ({ classes, subtitle }) => {
+const SubtitleFragment = ({ classes, subtitle }: SubtitleFragmentProps) => {
   if (!subtitle) {
     return null;
   }
@@ -149,7 +183,7 @@ const SubtitleFragment: FC<SubtitleFragmentProps> = ({ classes, subtitle }) => {
   );
 };
 
-export const Header: FC<Props> = ({
+export const Header = ({
   children,
   pageTitleOverride,
   style,
@@ -158,7 +192,7 @@ export const Header: FC<Props> = ({
   tooltip,
   type,
   typeLink,
-}) => {
+}: PropsWithChildren<Props>) => {
   const classes = useStyles();
   const documentTitle = pageTitleOverride || title;
   const pageTitle = title || pageTitleOverride;
@@ -166,25 +200,25 @@ export const Header: FC<Props> = ({
   const defaultTitle = `${documentTitle} | Backstage`;
 
   return (
-    <Fragment>
+    <>
       <Helmet titleTemplate={titleTemplate} defaultTitle={defaultTitle} />
-      <Theme.Consumer>
-        {theme => (
-          <header style={style} className={classes.header}>
-            <Waves theme={theme} />
-            <div className={classes.leftItemsBox}>
-              <TypeFragment classes={classes} type={type} typeLink={typeLink} />
-              <TitleFragment
-                classes={classes}
-                pageTitle={pageTitle}
-                tooltip={tooltip}
-              />
-              <SubtitleFragment classes={classes} subtitle={subtitle} />
-            </div>
-            <div className={classes.rightItemsBox}>{children}</div>
-          </header>
-        )}
-      </Theme.Consumer>
-    </Fragment>
+      <header style={style} className={classes.header}>
+        <div className={classes.leftItemsBox}>
+          <TypeFragment
+            classes={classes}
+            type={type}
+            typeLink={typeLink}
+            pageTitle={pageTitle}
+          />
+          <TitleFragment
+            classes={classes}
+            pageTitle={pageTitle}
+            tooltip={tooltip}
+          />
+          <SubtitleFragment classes={classes} subtitle={subtitle} />
+        </div>
+        <div className={classes.rightItemsBox}>{children}</div>
+      </header>
+    </>
   );
 };

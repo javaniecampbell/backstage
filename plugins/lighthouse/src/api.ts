@@ -15,6 +15,7 @@
  */
 
 import { createApiRef } from '@backstage/core';
+import { Config } from '@backstage/config';
 
 export type LighthouseCategoryId =
   | 'pwa'
@@ -103,6 +104,7 @@ export type LighthouseApi = {
   getWebsiteList: (listOptions: LASListRequest) => Promise<WebsiteListResponse>;
   getWebsiteForAuditId: (auditId: string) => Promise<Website>;
   triggerAudit: (payload: TriggerAuditPayload) => Promise<Audit>;
+  getWebsiteByUrl: (websiteUrl: string) => Promise<Website>;
 };
 
 export const lighthouseApiRef = createApiRef<LighthouseApi>({
@@ -111,6 +113,10 @@ export const lighthouseApiRef = createApiRef<LighthouseApi>({
 });
 
 export class LighthouseRestApi implements LighthouseApi {
+  static fromConfig(config: Config) {
+    return new LighthouseRestApi(config.getString('lighthouse.baseUrl'));
+  }
+
   constructor(public url: string) {}
 
   private async fetch<T = any>(input: string, init?: RequestInit): Promise<T> {
@@ -144,5 +150,11 @@ export class LighthouseRestApi implements LighthouseApi {
         'Content-Type': 'application/json',
       },
     });
+  }
+
+  async getWebsiteByUrl(websiteUrl: string): Promise<Website> {
+    return this.fetch<Website>(
+      `/v1/websites/${encodeURIComponent(websiteUrl)}`,
+    );
   }
 }

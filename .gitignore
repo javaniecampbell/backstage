@@ -1,5 +1,11 @@
-.idea/
+# macOS
 .DS_Store
+
+# IntelliJ
+.idea/
+*.iml
+
+# Visual Studio Code
 .vscode/
 .vsls.json
 
@@ -89,9 +95,8 @@ typings/
 # Nuxt.js build / generate output
 .nuxt
 dist
-
-# Microsite build output
-microsite/build
+dist-types
+dist-workspace
 
 # Gatsby files
 .cache/

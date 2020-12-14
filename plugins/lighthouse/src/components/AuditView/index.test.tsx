@@ -18,22 +18,25 @@
 
 jest.mock('react-router-dom', () => {
   const actual = jest.requireActual('react-router-dom');
+  const mockNavigation = jest.fn();
   return {
     ...actual,
     useParams: jest.fn(() => ({})),
+    useNavigate: jest.fn(() => mockNavigation),
   };
 });
 
 import React from 'react';
-import mockFetch from 'jest-fetch-mock';
 import { render } from '@testing-library/react';
-import { wrapInTestApp } from '@backstage/test-utils';
+import { wrapInTestApp, msw } from '@backstage/test-utils';
 import { ApiRegistry, ApiProvider } from '@backstage/core';
-
 import AuditView from '.';
 import { lighthouseApiRef, LighthouseRestApi, Audit, Website } from '../../api';
 import { formatTime } from '../../utils';
 import * as data from '../../__fixtures__/website-response.json';
+
+import { setupServer } from 'msw/node';
+import { rest } from 'msw';
 
 const { useParams }: { useParams: jest.Mock } = jest.requireMock(
   'react-router-dom',
@@ -44,8 +47,16 @@ describe('AuditView', () => {
   let apis: ApiRegistry;
   let id: string;
 
+  const server = setupServer();
+  msw.setupDefaultHandlers(server);
+
   beforeEach(() => {
-    mockFetch.mockResponse(JSON.stringify(websiteResponse));
+    server.use(
+      rest.get('https://lighthouse/*', async (_req, res, ctx) =>
+        res(ctx.json(websiteResponse)),
+      ),
+    );
+
     apis = ApiRegistry.from([
       [lighthouseApiRef, new LighthouseRestApi('https://lighthouse')],
     ]);
@@ -68,25 +79,6 @@ describe('AuditView', () => {
     );
     expect(iframe).toBeInTheDocument();
     expect(iframe).toHaveAttribute('src', `https://lighthouse/v1/audits/${id}`);
-  });
-
-  it('renders a link to create a new audit for this website', async () => {
-    const rendered = render(
-      wrapInTestApp(
-        <ApiProvider apis={apis}>
-          <AuditView />
-        </ApiProvider>,
-      ),
-    );
-
-    const button = await rendered.findByText('Create Audit');
-    expect(button).toBeInTheDocument();
-    expect(button.parentElement).toHaveAttribute(
-      'href',
-      `/lighthouse/create-audit?url=${encodeURIComponent(
-        'https://spotify.com',
-      )}`,
-    );
   });
 
   describe('sidebar', () => {
@@ -151,14 +143,14 @@ describe('AuditView', () => {
         expect(
           rendered.getByText(formatTime(a.timeCreated)).parentElement
             ?.parentElement,
-        ).toHaveAttribute('href', `/lighthouse/audit/${a.id}`);
+        ).toHaveAttribute('href', `/audit/${a.id}`);
       });
     });
   });
 
   describe('when the request for the website by id is pending', () => {
-    it('it shows the loading', async () => {
-      mockFetch.mockImplementationOnce(() => new Promise(() => {}));
+    it('shows the loading', async () => {
+      server.use(rest.get('*', (_req, res, ctx) => res(ctx.delay(20000))));
       const rendered = render(
         wrapInTestApp(
           <ApiProvider apis={apis}>
@@ -171,8 +163,12 @@ describe('AuditView', () => {
   });
 
   describe('when the request for the website by id fails', () => {
-    it('it shows an error', async () => {
-      mockFetch.mockRejectOnce(new Error('failed to fetch'));
+    it('shows an error', async () => {
+      server.use(
+        rest.get('*', (_req, res, ctx) =>
+          res(ctx.status(500), ctx.body('failed to fetch')),
+        ),
+      );
       const rendered = render(
         wrapInTestApp(
           <ApiProvider apis={apis}>
@@ -180,7 +176,7 @@ describe('AuditView', () => {
           </ApiProvider>,
         ),
       );
-      expect(await rendered.findByText('failed to fetch')).toBeInTheDocument();
+      expect(await rendered.findByText(/failed to fetch/)).toBeInTheDocument();
     });
   });
 

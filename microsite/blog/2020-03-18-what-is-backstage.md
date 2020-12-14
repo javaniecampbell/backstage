@@ -1,6 +1,6 @@
 ---
 title: What the heck is Backstage anyway?
-author: Stefan Ålund
+author: Stefan Ålund, Spotify
 authorURL: http://twitter.com/stalund
 authorImageURL: https://pbs.twimg.com/profile_images/121166861/6919c047c0d0edaace78c3009b28e917-user-full-200-130.generated_400x400.jpg
 ---
@@ -13,7 +13,7 @@ Two days ago, we released the open source version of [Backstage](https://backsta
 
 ## What’s the big infrastructure problem?
 
-As companies grow, their infrastructure systems get messier. Consider a team that wants to deploy something to the cloud. While Spotify has many awesome engineers, not every engineer is well-versed in our chosen cloud-provider tooling. Yet everyone is required to know and understand Terraform, GCP/AWS/Azure CLIs, Gitlab CI, Prometheus, Kubernetes, Docker, various monitoring and alerting tools, and much, much more. Once other resources come into play (databases, queueing, etc.), each engineer requires even more tools and domain-specific knowledge (or “disciplines”), from backend to machine learning, to mobile and data.
+As companies grow, their infrastructure systems get messier. Consider a team that wants to deploy something to the cloud. While Spotify has many awesome engineers, not every engineer is well-versed in our chosen cloud-provider tooling. Yet everyone is required to know and understand Terraform, GCP/AWS/Azure CLIs, GitLab CI, Prometheus, Kubernetes, Docker, various monitoring and alerting tools, and much, much more. Once other resources come into play (databases, queueing, etc.), each engineer requires even more tools and domain-specific knowledge (or “disciplines”), from backend to machine learning, to mobile and data.
 
 ## What’s the fix?
 
@@ -81,8 +81,8 @@ Similar to how Backstage ties together all of Spotify’s infrastructure, our am
 
 ## What’s next?
 
-We are envisioning [three phases](https://github.com/spotify/backstage/milestones) of the project (so far), and we have already begun work on various aspects of these phases. The best way to track the work and see where you can jump in and help out is:
+We are envisioning [three phases](https://github.com/backstage/backstage/milestones) of the project (so far), and we have already begun work on various aspects of these phases. The best way to track the work and see where you can jump in and help out is:
 
-https://github.com/spotify/backstage/milestones
+https://github.com/backstage/backstage/milestones
 
-Want to discuss the project or need support? Join us on [Discord](https://discord.gg/MUpMjP2) or reach out on [alund@spotify.com](mailto:alund@spotify.com).
+Want to discuss the project or need support? Join us on [Discord](https://discord.gg/MUpMjP2) or reach out on [backstage-interest@spotify.com](mailto:backstage-interest@spotify.com).

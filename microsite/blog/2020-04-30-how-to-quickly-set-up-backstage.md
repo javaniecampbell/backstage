@@ -1,6 +1,6 @@
 ---
 title: How to quickly set up Backstage
-author: Marcus Eide
+author: Marcus Eide, Spotify
 authorURL: https://github.com/marcuseide
 authorImageURL: https://secure.gravatar.com/avatar/20223f1e03673c7c1e6282fbebaf6942
 ---
@@ -34,7 +34,7 @@ You get to take full advantage of a platform that we at Spotify have been using 
 Just run the backstage-cli:
 
 ```bash
-npx @backstage/cli create-app
+npx @backstage/create-app
 ```
 
 Name your app, and we will create everything you need:
@@ -50,7 +50,7 @@ yarn start
 
 And you are good to go! 👍
 
-Read the full documentation on how to [create an app](/docs/getting-started/create-an-app.md) on GitHub.
+Read the full documentation on how to [create an app](/docs/getting-started/create-an-app) on GitHub.
 
 ## What do I get? (Let's get technical...)
 
@@ -132,4 +132,4 @@ If you are developing a plugin that might be useful for others, consider releasi
 
 ## Ready to get started?
 
-Head over to GitHub and check out the [project](https://github.com/spotify/backstage) or download our [CLI](https://www.npmjs.com/package/@backstage/cli). If you have more questions, join us on [Discord](https://discord.gg/MUpMjP2) or [create an issue](https://github.com/spotify/backstage/issues/new/choose).
+Head over to GitHub and check out the [project](https://github.com/backstage/backstage) or download our [CLI](https://www.npmjs.com/package/@backstage/cli). If you have more questions, join us on [Discord](https://discord.gg/MUpMjP2) or [create an issue](https://github.com/backstage/backstage/issues/new/choose).

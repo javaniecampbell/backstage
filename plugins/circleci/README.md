@@ -4,28 +4,13 @@ Website: [https://circleci.com/](https://circleci.com/)
 
 <img src="./src/assets/screenshot-1.png" />
 <img src="./src/assets/screenshot-2.png" />
-<img src="./src/assets/screenshot-3.png" />
-<img src="./src/assets/screenshot-4.png" />
 
 ## Setup
 
-0. If you have standalone app (you didn't clone this repo), then do
+1. If you have standalone app (you didn't clone this repo), then do
 
 ```bash
 yarn add @backstage/plugin-circleci
-```
-
-1. Add plugin API to your Backstage instance:
-
-```js
-// packages/app/src/api.ts
-import { ApiHolder } from '@backstage/core';
-import { CircleCIApi, circleCIApiRef } from '@backstage/plugin-circleci';
-
-const builder = ApiRegistry.builder();
-builder.add(circleCIApiRef, new CircleCIApi(/* optional custom url for your own CircleCI instance */));
-
-export default builder.build() as ApiHolder;
 ```
 
 2. Add plugin itself:
@@ -35,8 +20,48 @@ export default builder.build() as ApiHolder;
 export { plugin as Circleci } from '@backstage/plugin-circleci';
 ```
 
-3. Run app with `yarn start` and navigate to `/circleci/settings`
-4. Enter project settings and **project** token, acquired according to [https://circleci.com/docs/2.0/managing-api-tokens/](https://circleci.com/docs/2.0/managing-api-tokens/)
+3. Register the plugin router:
+
+```jsx
+// packages/app/src/components/catalog/EntityPage.tsx
+
+import { Router as CircleCIRouter } from '@backstage/plugin-circleci';
+
+// Then somewhere inside <EntityPageLayout>
+<EntityPageLayout.Content
+  path="/ci-cd/*"
+  title="CI/CD"
+  element={<CircleCIRouter />}
+/>;
+```
+
+4. Add proxy config:
+
+```yaml
+// app-config.yaml
+proxy:
+  '/circleci/api':
+    target: https://circleci.com/api/v1.1
+    headers:
+      Circle-Token:
+        $env: CIRCLECI_AUTH_TOKEN
+```
+
+5. Get and provide `CIRCLECI_AUTH_TOKEN` as env variable (https://circleci.com/docs/api/#add-an-api-token)
+6. Add `circleci.com/project-slug` annotation to your catalog-info.yaml file in format <git-provider>/<owner>/<project> (https://backstage.io/docs/architecture-decisions/adrs-adr002#format)
+
+```yaml
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  # ...
+  annotations:
+    # This also supports bitbucket/xxx/yyy
+    circleci.com/project-slug: github/my-org/my-repo
+spec:
+  type: service
+  # ...
+```
 
 ## Features
 
@@ -50,3 +75,4 @@ export { plugin as Circleci } from '@backstage/plugin-circleci';
 ## Limitations
 
 - CircleCI has pretty strict rate limits per token, be careful with opened tabs
+- CircleCI doesn't provide a way to auth by 3rd party (e.g. GitHub) token, nor by calling their OAuth endpoints, which currently stands in the way of better auth integration with Backstage (https://discuss.circleci.com/t/circleci-api-authorization-with-github-token/5356)

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import React, { FC, useRef, useState, MouseEventHandler } from 'react';
+import React, { useRef, useState, MouseEventHandler } from 'react';
 import { IconButton, makeStyles, Tooltip } from '@material-ui/core';
 import PropTypes from 'prop-types';
 import CopyIcon from '@material-ui/icons/FileCopy';
@@ -56,14 +56,14 @@ const defaultProps = {
   tooltipText: 'Text copied to clipboard',
 };
 
-export const CopyTextButton: FC<Props> = props => {
+export const CopyTextButton = (props: Props) => {
   const { text, tooltipDelay, tooltipText } = {
     ...defaultProps,
     ...props,
   };
   const classes = useStyles(props);
   const errorApi = useApi(errorApiRef);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
   const [open, setOpen] = useState(false);
 
   const handleCopyClick: MouseEventHandler = e => {
@@ -82,9 +82,8 @@ export const CopyTextButton: FC<Props> = props => {
 
   return (
     <>
-      <input
+      <textarea
         ref={inputRef}
-        type="text"
         style={{ position: 'absolute', top: -9999, left: 9999 }}
         defaultValue={text}
       />

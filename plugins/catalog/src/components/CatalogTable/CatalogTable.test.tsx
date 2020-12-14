@@ -15,12 +15,11 @@
  */
 
 import { Entity } from '@backstage/catalog-model';
-import { wrapInTestApp } from '@backstage/test-utils';
-import { render } from '@testing-library/react';
+import { renderWithEffects, wrapInTestApp } from '@backstage/test-utils';
 import * as React from 'react';
 import { CatalogTable } from './CatalogTable';
 
-const entites: Entity[] = [
+const entities: Entity[] = [
   {
     apiVersion: 'backstage.io/v1alpha1',
     kind: 'Component',
@@ -40,7 +39,7 @@ const entites: Entity[] = [
 
 describe('CatalogTable component', () => {
   it('should render error message when error is passed in props', async () => {
-    const rendered = render(
+    const rendered = await renderWithEffects(
       wrapInTestApp(
         <CatalogTable
           titlePreamble="Owned"
@@ -57,11 +56,11 @@ describe('CatalogTable component', () => {
   });
 
   it('should display entity names when loading has finished and no error occurred', async () => {
-    const rendered = render(
+    const rendered = await renderWithEffects(
       wrapInTestApp(
         <CatalogTable
           titlePreamble="Owned"
-          entities={entites}
+          entities={entities}
           loading={false}
         />,
       ),

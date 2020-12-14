@@ -14,29 +14,72 @@
  * limitations under the License.
  */
 
+import { Command } from 'commander';
 import fs from 'fs-extra';
+import { join as joinPath, relative as relativePath } from 'path';
 import { createDistWorkspace } from '../../lib/packager';
 import { paths } from '../../lib/paths';
 import { run } from '../../lib/run';
+import { parseParallel, PARALLEL_ENV_VAR } from '../../lib/parallel';
 
 const PKG_PATH = 'package.json';
 
-export default async (imageTag: string) => {
+export default async (cmd: Command) => {
+  // Skip the preparation steps if we're being asked for help
+  if (cmd.args.includes('--help')) {
+    await run('docker', ['image', 'build', '--help']);
+    return;
+  }
+
   const pkgPath = paths.resolveTarget(PKG_PATH);
   const pkg = await fs.readJson(pkgPath);
+  const appConfigs = await findAppConfigs();
+  const npmrc = (await fs.pathExists(paths.resolveTargetRoot('.npmrc')))
+    ? ['.npmrc']
+    : [];
   const tempDistWorkspace = await createDistWorkspace([pkg.name], {
+    buildDependencies: Boolean(cmd.build),
     files: [
       'package.json',
       'yarn.lock',
-      'app-config.yaml',
+      ...npmrc,
+      ...appConfigs,
       { src: paths.resolveTarget('Dockerfile'), dest: 'Dockerfile' },
     ],
+    parallel: parseParallel(process.env[PARALLEL_ENV_VAR]),
+    skeleton: 'skeleton.tar',
   });
   console.log(`Dist workspace ready at ${tempDistWorkspace}`);
 
-  await run('docker', ['build', '.', '-t', imageTag], {
+  // all args are forwarded to docker build
+  await run('docker', ['image', 'build', '.', ...cmd.args], {
     cwd: tempDistWorkspace,
   });
 
   await fs.remove(tempDistWorkspace);
 };
+
+/**
+ * Find all config files to copy into the image
+ */
+async function findAppConfigs(): Promise<string[]> {
+  const files = [];
+
+  for (const name of await fs.readdir(paths.targetRoot)) {
+    if (name.startsWith('app-config.') && name.endsWith('.yaml')) {
+      files.push(name);
+    }
+  }
+
+  if (paths.targetRoot !== paths.targetDir) {
+    const dirPath = relativePath(paths.targetRoot, paths.targetDir);
+
+    for (const name of await fs.readdir(paths.targetDir)) {
+      if (name.startsWith('app-config.') && name.endsWith('.yaml')) {
+        files.push(joinPath(dirPath, name));
+      }
+    }
+  }
+
+  return files;
+}

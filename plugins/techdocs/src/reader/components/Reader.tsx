@@ -13,107 +13,82 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 import React from 'react';
-import { useApi, configApiRef } from '@backstage/core';
-import { useShadowDom } from '..';
 import { useAsync } from 'react-use';
-import { AsyncState } from 'react-use/lib/useAsync';
-
-import { useLocation, useParams, useNavigate } from 'react-router-dom';
+import { useTheme } from '@material-ui/core';
+import { useParams, useNavigate } from 'react-router-dom';
+import { EntityName } from '@backstage/catalog-model';
+import { useApi } from '@backstage/core';
+import { BackstageTheme } from '@backstage/theme';
+import { useShadowDom } from '..';
+import { techdocsStorageApiRef } from '../../api';
+import TechDocsProgressBar from './TechDocsProgressBar';
 
 import transformer, {
   addBaseUrl,
   rewriteDocLinks,
   addLinkClickListener,
   removeMkdocsHeader,
-  modifyCss,
+  simplifyMkdocsFooter,
   onCssReady,
   sanitizeDOM,
+  injectCss,
 } from '../transformers';
-import URLFormatter from '../urlFormatter';
 import { TechDocsNotFound } from './TechDocsNotFound';
-import { TechDocsPageWrapper } from './TechDocsPageWrapper';
 
-const useFetch = (url: string): AsyncState<string | Error> => {
-  const state = useAsync(async () => {
-    const request = await fetch(url);
-    if (request.status === 404) {
-      return [request.url, new Error('Page not found')];
-    }
-    const response = await request.text();
-    return [request.url, response];
-  }, [url]);
-
-  const [fetchedUrl, fetchedValue] = state.value ?? [];
-
-  if (url !== fetchedUrl) {
-    // Fixes a race condition between two pages
-    return { loading: true };
-  }
-
-  return Object.assign(state, fetchedValue ? { value: fetchedValue } : {});
+type Props = {
+  entityId: EntityName;
+  onReady?: () => void;
 };
 
-const useEnforcedTrailingSlash = (): void => {
-  React.useEffect(() => {
-    const actualUrl = window.location.href;
-    const expectedUrl = new URLFormatter(window.location.href).formatBaseURL();
+export const Reader = ({ entityId, onReady }: Props) => {
+  const { kind, namespace, name } = entityId;
+  const { '*': path } = useParams();
+  const theme = useTheme<BackstageTheme>();
 
-    if (actualUrl !== expectedUrl) {
-      window.history.replaceState({}, document.title, expectedUrl);
-    }
-  }, []);
-};
-
-export const Reader = () => {
-  useEnforcedTrailingSlash();
-
-  const docStorageUrl =
-    useApi(configApiRef).getOptionalString('techdocs.storageUrl') ??
-    'https://techdocs-mock-sites.storage.googleapis.com';
-
-  const location = useLocation();
-  const { componentId, '*': path } = useParams();
+  const techdocsStorageApi = useApi(techdocsStorageApiRef);
   const [shadowDomRef, shadowRoot] = useShadowDom();
   const navigate = useNavigate();
-  const normalizedUrl = new URLFormatter(
-    `${docStorageUrl}${location.pathname.replace('/docs', '')}`,
-  ).formatBaseURL();
-  const state = useFetch(`${normalizedUrl}index.html`);
+
+  const { value, loading, error } = useAsync(async () => {
+    return techdocsStorageApi.getEntityDocs({ kind, namespace, name }, path);
+  }, [techdocsStorageApi, kind, namespace, name, path]);
 
   React.useEffect(() => {
-    if (!shadowRoot) {
-      return; // Shadow DOM isn't ready
+    if (!shadowRoot || loading || error) {
+      return; // Shadow DOM isn't ready / It's not ready / Docs was not found
     }
-
-    if (state.loading) {
-      return; // Page isn't ready
+    if (onReady) {
+      onReady();
     }
-
-    if (state.value instanceof Error) {
-      return; // Docs not found
-    }
-
     // Pre-render
-    const transformedElement = transformer(state.value as string, [
+    const transformedElement = transformer(value as string, [
       sanitizeDOM(),
       addBaseUrl({
-        docStorageUrl,
-        componentId,
+        techdocsStorageApi,
+        entityId: entityId,
         path,
       }),
       rewriteDocLinks(),
-      modifyCss({
-        cssTransforms: {
-          '.md-main__inner': [{ 'margin-top': '0' }],
-          '.md-sidebar': [{ top: '0' }, { width: '20rem' }],
-          '.md-typeset': [{ 'font-size': '1rem' }],
-          '.md-nav': [{ 'font-size': '1rem' }],
-          '.md-grid': [{ 'max-width': '80vw' }],
-        },
-      }),
       removeMkdocsHeader(),
+      simplifyMkdocsFooter(),
+      injectCss({
+        css: `
+        body {
+          font-family: ${theme.typography.fontFamily};
+          --md-text-color: ${theme.palette.text.primary};
+          --md-text-link-color: ${theme.palette.primary.main};
+
+          --md-code-fg-color: ${theme.palette.text.primary};
+          --md-code-bg-color: ${theme.palette.background.paper};
+        }
+        .md-main__inner { margin-top: 0; }
+        .md-sidebar { top: 0; width: 20rem; }
+        .md-typeset { font-size: 1rem; }
+        .md-nav { font-size: 1rem; }
+        .md-grid { max-width: 80vw; }
+        `,
+      }),
     ]);
 
     if (!transformedElement) {
@@ -137,6 +112,7 @@ export const Reader = () => {
         return dom;
       },
       addLinkClickListener({
+        baseUrl: window.location.origin,
         onClick: (_: MouseEvent, url: string) => {
           const parsedUrl = new URL(url);
           navigate(`${parsedUrl.pathname}${parsedUrl.hash}`);
@@ -145,7 +121,7 @@ export const Reader = () => {
         },
       }),
       onCssReady({
-        docStorageUrl,
+        docStorageUrl: techdocsStorageApi.apiOrigin,
         onLoading: (dom: Element) => {
           (dom as HTMLElement).style.setProperty('opacity', '0');
         },
@@ -154,15 +130,30 @@ export const Reader = () => {
         },
       }),
     ]);
-  }, [componentId, path, shadowRoot, state]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [
+    name,
+    path,
+    shadowRoot,
+    value,
+    error,
+    loading,
+    namespace,
+    kind,
+    entityId,
+    navigate,
+    techdocsStorageApi,
+    theme,
+    onReady,
+  ]);
 
-  if (state.value instanceof Error) {
-    return <TechDocsNotFound />;
+  if (error) {
+    return <TechDocsNotFound errorMessage={error.message} />;
   }
 
   return (
-    <TechDocsPageWrapper title={componentId} subtitle={componentId}>
+    <>
+      {loading ? <TechDocsProgressBar /> : null}
       <div ref={shadowDomRef} />
-    </TechDocsPageWrapper>
+    </>
   );
 };

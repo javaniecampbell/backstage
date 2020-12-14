@@ -15,31 +15,41 @@
  */
 
 import React from 'react';
-import { Grid } from '@material-ui/core';
+import { Grid, makeStyles } from '@material-ui/core';
 import {
   Content,
   ContentHeader,
   Page,
   Header,
-  HeaderLabel,
   SupportButton,
-  pageTheme,
-  useApi,
 } from '@backstage/core';
 import RadarComponent from '../components/RadarComponent';
-import { techRadarApiRef, TechRadarApi } from '../api';
+import { TechRadarComponentProps } from '../api';
 
-const RadarPage = (): JSX.Element => {
-  const techRadarApi = useApi<TechRadarApi>(techRadarApiRef);
+const useStyles = makeStyles(() => ({
+  overflowXScroll: {
+    overflowX: 'scroll',
+  },
+}));
 
+export type TechRadarPageProps = TechRadarComponentProps & {
+  title?: string;
+  subtitle?: string;
+  pageTitle?: string;
+};
+
+export const RadarPage = ({
+  title,
+  subtitle,
+  pageTitle,
+  ...props
+}: TechRadarPageProps): JSX.Element => {
+  const classes = useStyles();
   return (
-    <Page theme={pageTheme.tool}>
-      <Header title={techRadarApi.title} subtitle={techRadarApi.subtitle}>
-        <HeaderLabel label="Owner" value="Spotify" />
-        <HeaderLabel label="Lifecycle" value="Beta" />
-      </Header>
-      <Content>
-        <ContentHeader title={techRadarApi.pageTitle}>
+    <Page themeId="tool">
+      <Header title={title} subtitle={subtitle} />
+      <Content className={classes.overflowXScroll}>
+        <ContentHeader title={pageTitle}>
           <SupportButton>
             This is used for visualizing the official guidelines of different
             areas of software development such as languages, frameworks,
@@ -48,7 +58,7 @@ const RadarPage = (): JSX.Element => {
         </ContentHeader>
         <Grid container spacing={3} direction="row">
           <Grid item xs={12} sm={6} md={4}>
-            <RadarComponent {...techRadarApi} />
+            <RadarComponent {...props} />
           </Grid>
         </Grid>
       </Content>
@@ -56,4 +66,8 @@ const RadarPage = (): JSX.Element => {
   );
 };
 
-export default RadarPage;
+RadarPage.defaultProps = {
+  title: 'Tech Radar',
+  subtitle: 'Pick the recommended technologies for your projects',
+  pageTitle: 'Company Radar',
+};
