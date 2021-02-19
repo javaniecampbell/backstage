@@ -56,11 +56,6 @@
     "recursive-readdir": "^2.2.2",
     "shx": "^0.3.2"
   },
-  "husky": {
-    "hooks": {
-      "pre-commit": "lint-staged"
-    }
-  },
   "prettier": "@spotify/prettier-config",
   "lint-staged": {
     "*.{js,jsx,ts,tsx}": [
